@@ -3,6 +3,7 @@ Chiara Baldini, Melanie Turano, Zeno Tamagni
 
 ## Project title
 General research question: What would be the consequences in society if it were discovered that God is actually an alien?
+
 Specific research question: Are there elements within the Hebrew version of the Old Testament that suggest that God is not actually a spiritual being but an extraterrestrial being?
 
 ### Data Collection
