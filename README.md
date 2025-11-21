@@ -1,5 +1,5 @@
 # DDD-2025-Group1
-Chiara Baldini, Mölanie Turano, Zeno Tamagni
+Chiara Baldini, Melanie Turano, Zeno Tamagni
 
 ## Project title
 
