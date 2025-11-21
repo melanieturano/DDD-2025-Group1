@@ -6,7 +6,7 @@ General research question: What would be the consequences in society if it were 
 
 Specific research question: Are there elements within the Hebrew version of the Old Testament that suggest that God is not actually a spiritual being but an extraterrestrial being?
 
-### Data Collection
+## Data Collection
 **Where did you get your data from?**
 
 Data come from different sources. In particular data related to Hebrew terms, their literary translation, their etymological origin, and the    count of how many times they are repeated in the Old Testament were entered into the Bible Hub website and the Hebrew encyclopedia. For all the information related to the "classical" theological interpretation of the words we used Bible Hub while for Mauro Biglino's interpretation, we relied mainly on his book "The Bible does not speak of God". Consultations on Wikipedia were also helpful, particularly pages related to the topic of Ancient Astronaut Theory and the Uphological Religion. Mauro Biglino also has a YouTube channel where he posts numerous videos about his interpretations of the Bible. He has been a guest on several podcasts and television shows, in particular we listened to what he talks about in two episodes of the Muschio Selvaggio podcast
