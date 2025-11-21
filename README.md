@@ -16,8 +16,8 @@ The data collected encompass not only their translation but also their interpret
 
 **Who is/are the sources/creators of your data?**
 
-- Il sito Bible Hub
-- Verisone digitale del dizionario Ebraico
+- Bible Hub website
+- Digital version of Jewish Encyclopedia
 - Wikipedia
 - Biblino, M., "La Bibbia non parla di Dio", 2015, Mondadori
 - Muschio Selvaggio Podcast
