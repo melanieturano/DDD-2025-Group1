@@ -27,7 +27,7 @@ The data collected encompass not only their translation but also their interpret
 [https://biblehub.com/, https://www.jewishencyclopedia.com/, https://pdfcoffee.com/mauro-biglino-2015-la-bibbia-non-parla-di-dio-5-pdf-free.html, https://en.wikipedia.org/wiki/Ancient_astronauts, https://en.wikipedia.org/wiki/UFO_religion, https://www.youtube.com/watch?v=lhlF3Bl0iho, https://www.youtube.com/watch?v=HvxpjcnJ8DM, https://www.youtube.com/channel/UCR2iH9ZqCidpYn3cMG-n6og]
 
 
-#### Data Organisation
+## Data Organisation
 **Have you combined data from different sources? How did you merge them?**
 
 We combined several data points from different sources since we were unable to find an already complete dataset (as we actually expected). It was therefore necessary to analyze various sources in order to build a dataset that was useful to us but, above all, allowed us to gain an overview of the two opposing interpretations. Our aim was therefore to bring out these differences without, however, claiming to provide a concrete answer to our research question, much less to give one interpretation as absolute rather than the other. For this reason, data related to the translation and etymology of the words were inserted into the dataset. The most complex part was actually the one related to interpretations because, obviously, there are no theological resources that report all possible interpretations for each word, especially if these are tendentious. 
