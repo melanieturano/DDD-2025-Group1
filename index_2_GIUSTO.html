@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Genesis: The Alien Hypothesis</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Tone.js for background music -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'alien-primary': '#00FF41',  /* Matrix Green */
+                        'alien-secondary': '#008F11', /* Dark Green */
+                        'alien-cyan': '#00FFFF',     /* Cyber Cyan */
+                        'alien-magenta': '#FF00FF',  /* Neon Magenta */
+                        'alien-yellow': '#FFFF00',   /* Warning Yellow */
+                        'void-black': '#050505',     /* Deep Black */
+                    },
+                    fontFamily: {
+                        'title': ['Orbitron', 'sans-serif'],
+                        'body': ['Barlow', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'spin-slow': 'spin 12s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* --- GLOBAL STYLES (FROM ORIGINAL CODE) --- */
+        body {
+            background-color: #050505;
+            color: #e5e5e5;
+            overflow-x: hidden;
+        }
+
+        /* Gradient Text */
+        .text-gradient {
+            background: linear-gradient(135deg, #FFFFFF 30%, #00FF41 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Background Glows */
+        .glow-spot {
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(0, 255, 65, 0.06) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(80px);
+        }
+
+        /* Glassmorphism Cards */
+        .glass-card {
+            background: rgba(10, 20, 10, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 255, 65, 0.15);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(0, 255, 65, 0.4);
+        }
+
+        /* Data Terminal Style for Charts */
+        .data-terminal {
+            position: relative;
+            background: rgba(0, 5, 0, 0.7);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 1rem;
+            box-shadow: inset 0 0 30px rgba(0, 255, 65, 0.05);
+            overflow: hidden; /* Mantieni questo per l'header */
+            /* Rimosso overflow-y: auto e max-height per la vista normale */
+        }
+        
+        /* Stile specifico per il contenitore del modale: imposta l'overflow quando l'elemento viene spostato nel modale (gestito via JS per #vis-bubble) */
+        #chart-modal #modal-content #viz1-wrapper #vis-bubble {
+            /* Queste proprietà vengono gestite dinamicamente dal JS in toggleModal per abilitare lo scroll solo a schermo intero */
+            /* height: 100%; è gestito dal JS */
+        }
+
+
+        .terminal-header {
+            background: rgba(0, 255, 65, 0.05);
+            border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0; /* Impedisce all'header di rimpicciolirsi */
+        }
+
+        /* Fullscreen Modal */
+        #chart-modal {
+            backdrop-filter: blur(20px);
+            background-color: rgba(0,0,0,0.9);
+        }
+        
+        /* Header Glass Title Background FIX: Ridotto il padding per evitare overflow a schermo piccolo */
+        .title-glass-container {
+            display: flex; 
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 2rem;
+            padding: 2rem; /* Ridotto il padding */
+            box-shadow: 0 0 40px rgba(0, 255, 65, 0.05);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050505; }
+        ::-webkit-scrollbar-thumb { background: #008F11; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00FF41; }
+
+        /* Canvas */
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+        }
+
+        /* Tooltip - High Z-Index for Modal */
+        .d3-tooltip {
+            position: absolute;
+            background: rgba(0, 10, 0, 0.95);
+            border: 1px solid #00FF41;
+            color: #fff;
+            padding: 12px;
+            border-radius: 4px;
+            pointer-events: none;
+            font-family: 'Barlow', sans-serif;
+            font-size: 0.8rem;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 20000; /* Higher than modal */
+            max-width: 320px;
+        }
+
+        /* Legend Styles (Original VIZ 2) */
+        .chart-legend-item {
+            display: flex;
+            align-items: center;
+            margin-right: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+            color: #aaa;
+            cursor: pointer;
+            transition: color 0.2s;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .chart-legend-item:hover { color: white; }
+        .legend-dot { width: 10px; height: 10px; margin-right: 8px; box-shadow: 0 0 5px currentColor; }
+
+        /* Chart Styles (Original VIZ 2) */
+        .bubble-node circle { transition: all 0.3s ease; cursor: pointer; }
+        .bubble-node:hover circle { stroke: #fff; stroke-width: 3px; filter: drop-shadow(0 0 8px white); }
+        .scatter-dot { transition: all 0.3s ease; cursor: pointer; }
+        .scatter-dot:hover { stroke: #fff; stroke-width: 2px; fill-opacity: 1; filter: drop-shadow(0 0 5px white); }
+
+        /* Table Styles */
+        .alien-table th { 
+            background-color: rgba(0, 255, 65, 0.1); 
+            color: #00FF41; 
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        .alien-table td { 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+            color: #ccc; 
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .alien-table tr:last-child td { border-bottom: none; }
+        .alien-table tr:hover td { background-color: rgba(0, 255, 65, 0.03); color: white; }
+
+        /* Impact Badges */
+        .impact-badge { display: inline-block; padding: 0.2em 0.6em; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .impact-neg { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
+        .impact-pos { background: rgba(0, 255, 65, 0.2); color: #86efac; border: 1px solid rgba(0, 255, 65, 0.4); }
+        .impact-mix { background: rgba(234, 179, 8, 0.2); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4); }
+
+        /* --- NAVIGATION SPECIFIC STYLES (Scroll-Spy) --- */
+        .nav-link {
+            position: relative;
+            padding-bottom: 4px; /* Space for underline */
+            color: #9ca3af; /* Default gray-400 */
+            transition: color 0.2s;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background-color: #00FF41; /* alien-primary */
+            transition: width 0.3s ease, left 0.3s ease;
+            box-shadow: 0 0 5px #00FF41;
+        }
+
+        .nav-link.active {
+            color: white;
+            font-weight: 700; /* Bolder on active */
+        }
+        .nav-link.active::after {
+            width: 100%;
+            left: 0;
+        }
+        .nav-link:hover {
+             color: #00FF41;
+        }
+
+        /* Audio Controls Styling */
+        .audio-control {
+            cursor: pointer;
+            color: #00FF41;
+            transition: color 0.2s, transform 0.1s;
+        }
+        .audio-control:hover {
+            color: #FFFFFF;
+            transform: scale(1.1);
+        }
+
+        /* Custom Slider Style */
+        #volume-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 80px; /* Adjusted size */
+            height: 4px;
+            background: #113311; /* Dark background */
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        #volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00FF41; /* Primary color */
+            cursor: pointer;
+            box-shadow: 0 0 5px #00FF41;
+        }
+        #volume-slider::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00FF41;
+            cursor: pointer;
+            box-shadow: 0 0 5px #00FF41;
+        }
+        
+        /* Data Panel Specific Table Styles */
+        #dataset-table-display th, #dataset-table-display td {
+            padding: 8px 16px;
+            text-align: left;
+            border: 1px solid rgba(0, 255, 65, 0.1);
+        }
+        #dataset-table-display th {
+            background-color: rgba(0, 255, 65, 0.2);
+            font-weight: bold;
+            color: #00FF41;
+        }
+        /* Rimuovi il bordo di default della tabella */
+        #dataset-table-display {
+            border-collapse: collapse;
+        }
+
+        /* Stile del Pannello Dati Grezzi (Aperto/Chiuso) */
+        .data-panel-content {
+            max-height: 0;
+            overflow: hidden;
+            /* FIX: Transizione più veloce per fluidità */
+            transition: max-height 0.3s ease-in-out; 
+            padding-top: 0;
+        }
+
+        .data-panel-content.open {
+            max-height: 800px; 
+            padding-top: 1rem;
+        }
+        
+        /* FIX: Rotazione freccia quando il pannello è espanso */
+        .data-panel-toggle[aria-expanded="true"] .lucide-chevron-down {
+            transform: rotate(180deg);
+        }
+        .data-panel-toggle .lucide-chevron-down {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        /* --- NUOVO CSS PER VIZ 1 (DAL SECONDO CODICE) --- */
+        .domain, .tick line {
+            stroke: currentColor !important;
+        }
+        .tick text {
+            fill: var(--alien-cyan) !important;
+        }
+        .axis-label {
+            fill: var(--alien-primary) !important;
+            font-family: Orbitron;
+        }
+        /* Stili per le linee di collegamento */
+        .connector-line {
+            stroke: #FFFFFF;
+            stroke-width: 1px;
+            opacity: 1;
+            stroke-linecap: round;
+        }
+        .line-dashed {
+            stroke-dasharray: 20 8;
+        }
+        .line-dotted {
+            stroke-dasharray: 1 5;
+        }
+        /* Testo Bianco per le etichette laterali (12px per ridurre ingombro) */
+        .side-label {
+            fill: #FFFFFF !important;
+            font-size: 12px; 
+        }
+
+        /* Testo al centro delle bolle */
+        .center-label {
+            fill: #FFFFFF;
+            font-size: 10px;
+            font-weight: 700;
+            pointer-events: none; /* non blocca l'hover sulla bolla */
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.8); /* per leggibilità sui colori chiari */
+        }
+
+        /* Stile legenda */
+        .legend-label {
+            fill: #FFFFFF;
+            font-size: 11px;
+        }
+        /* FINE NUOVO CSS */
+
+    </style>
+</head>
+<body class="font-body selection:bg-alien-primary selection:text-black">
+
+    <!-- Ambient Background Glows -->
+    <div class="glow-spot top-[-200px] left-[-200px] opacity-40"></div>
+    <div class="glow-spot bottom-[10%] right-[-200px] opacity-20"></div>
+
+    <!-- Animated Background -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Fullscreen Modal Container -->
+    <div id="chart-modal" class="fixed inset-0 z-[9999] hidden flex flex-col items-center justify-center p-4 md:p-8 transition-opacity duration-300">
+        <button onclick="closeModal()" class="absolute top-6 right-6 text-white hover:text-alien-primary bg-black/50 rounded-full p-3 border border-white/20 transition-colors z-50 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <!-- Modal Content Area -->
+        <div class="w-full h-full bg-black/90 border border-alien-primary/50 rounded-2xl p-6 flex relative overflow-hidden shadow-[0_0_50px_rgba(0,255,65,0.1)] flex-row gap-6" id="modal-content">
+            <!-- Content moved here via JS -->
+        </div>
+        <div class="absolute bottom-8 text-alien-primary font-mono text-xs animate-pulse pointer-events-none">PRESS ESC TO CLOSE</div>
+    </div>
+
+    <!-- Navigation (Glass Background) -->
+    <nav class="fixed top-0 w-full z-50 px-6 py-4 backdrop-blur-xl bg-black/60 border-b border-white/5 transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 bg-alien-primary rounded-full animate-pulse"></div>
+                <span class="font-title font-bold text-lg tracking-tighter text-white">PROJECT <span class="text-alien-primary">GENESIS</span></span>
+            </div>
+            
+            <!-- Desktop Menu -->
+            <div class="hidden md:flex gap-8 text-xs font-bold font-title tracking-widest">
+                <a href="#intro" class="nav-link" data-target="intro">BRIEF</a>
+                <a href="#methodology" class="nav-link" data-target="methodology">CONTEXT</a>
+                <a href="#dataset-raw" class="nav-link" data-target="dataset-raw">DATASET</a> <!-- Nuova voce di menu -->
+                <a href="#viz-1" class="nav-link" data-target="viz-1">VISUALIZATION</a>
+                <a href="#impact" class="nav-link" data-target="impact">IMPACT</a>
+            </div>
+
+            <!-- Audio Controls -->
+            <div class="flex items-center space-x-3 pointer-events-auto">
+                
+                <!-- Volume Slider -->
+                <input type="range" id="volume-slider" min="0" max="100" value="30" oninput="setVolumeFromSlider(this.value)">
+
+                <!-- Mute/Unmute Icon (Volume 2 / Volume X) -->
+                <svg onclick="toggleMute()" id="mute-icon" xmlns="http://www.w3.org/2000/svg" class="audio-control h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <!-- Default path: Volume On -->
+                    <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 9a5 5 0 0 1 0 6" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+
+                <!-- Rimosse le icone Play/Pause come richiesto -->
+            </div>
+            
+        </div>
+    </nav>
+
+    <main>
+        <!-- HERO SECTION -->
+        <section id="intro" class="min-h-screen flex items-center relative px-6 pt-20">
+            <div class="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center">
+                <div class="space-y-8 z-10">
+                    <!-- Hypothesis Verified Tag -->
+                    <div class="inline-flex items-center gap-2 text-alien-primary font-mono text-xs tracking-widest uppercase border border-alien-primary/30 px-3 py-1 rounded-full bg-alien-primary/5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                        Hypothesis Verified
+                    </div>
+                    
+                    <!-- Main Question -->
+                    <h2 class="font-title text-2xl md:text-3xl text-gray-300 font-light leading-relaxed">
+                        What would be the consequences in society if it were discovered that <strong class="text-white">God</strong> is actually an <strong class="text-alien-primary">alien?</strong>
+                    </h2>
+
+                    <!-- Glass Title Container (Aggiunto flex per fixare l'espansione) -->
+                    <div class="title-glass-container flex">
+                        <h1 class="font-title font-black text-5xl md:text-7xl leading-[0.9] tracking-tight text-white">
+                            ALIEN SAVE<br>
+                            <span class="text-gradient">THE QUEEN</span>
+                        </h1>
+                        <p class="text-gray-400 mt-4 font-mono text-sm border-l-2 border-alien-primary pl-4">
+                            Analysis of the semantic divergence in the Hebrew Tanakh suggesting a technological origin of the Divine.
+                        </p>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-4 pt-4">
+                        <!-- Rimosso il bottone "ACCEDI ALL'ANALISI" come richiesto -->
+                    </div>
+                </div>
+
+                <!-- Abstract Hero Visual -->
+                <div class="relative h-[500px] w-full hidden lg:flex items-center justify-center">
+                    <div class="absolute w-[500px] h-[500px] bg-gradient-to-tr from-alien-primary to-transparent rounded-full blur-[100px] opacity-20 animate-pulse-slow"></div>
+                    <div class="relative z-10 glass-card p-10 rounded-[3rem] w-full max-w-md border border-white/10 transform rotate-2 hover:rotate-0 transition-transform duration-700">
+                        <div class="flex justify-between items-start mb-12">
+                            <div class="text-6xl font-title font-bold text-white/20">01</div>
+                            <div class="w-12 h-12 rounded-full border border-alien-primary flex items-center justify-center text-alien-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <h3 class="text-xl font-bold text-white">Experimental Dataset</h3>
+                            <p class="text-gray-400 leading-relaxed">
+                                "If the root word <em>Kavod</em> implies weight and dimension, then the 'Glory of God' becomes a physical object."
+                            </p>
+                            <div class="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+                                <div class="h-full w-3/4 bg-alien-primary"></div>
+                            </div>
+                            <div class="text-xs text-alien-primary font-mono text-right">ANALYSIS COMPLETE</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RESEARCH CONTEXT SECTION -->
+        <section id="methodology" class="py-24 px-6 relative bg-void-black">
+            <div class="max-w-7xl mx-auto">
+                <div class="mb-16 border-b border-white/10 pb-6">
+                    <span class="text-alien-primary font-mono text-xs tracking-widest">METHODOLOGY</span>
+                    <h2 class="font-title text-4xl md:text-5xl font-bold mt-2 text-white">DATA <span class="text-gray-600">CONTEXT</span></h2>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Data Collection -->
+                    <div class="glass-card p-6 rounded-2xl transition-transform duration-300 border border-alien-primary/50">
+                        <h3 class="text-lg font-bold mb-3 text-white border-b border-alien-primary/50 pb-2">Data Collection</h3>
+                        <p class="text-gray-400 text-sm mb-3">
+                            Data collected encompasses Hebrew terms, their literary translation, etymology, and the count of repetitions in the Old Testament (Hebrew version).
+                        </p>
+                        <h4 class="text-xs font-bold text-alien-primary uppercase mt-4 mb-2">Sources:</h4>
+                        <ul class="list-disc list-inside text-xs text-gray-500 space-y-1 pl-4">
+                            <li>Bible Hub website</li>
+                            <li>Digital version of Jewish Encyclopedia</li>
+                            <li>Wikipedia (Ancient Astronaut Theory, Uphological Religion)</li>
+                            <li>Biglino, M., "La Bibbia non parla di Dio" (2015)</li>
+                            <li>Muschio Selvaggio Podcast, Mauro Biglino YouTube channel</li>
+                        </ul>
+                        <div class="mt-4">
+                            <span class="text-xs font-bold text-alien-primary uppercase">Relevant Data:</span>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Terms, Theological Interpretation, Biglino Interpretation, Theme, Repetition Count (most relevant).
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Data Organisation -->
+                    <div class="glass-card p-6 rounded-2xl transition-transform duration-300 border border-alien-primary/50 relative overflow-hidden">
+                        <h3 class="text-lg font-bold mb-3 text-white border-b border-alien-primary/50 pb-2">Data Organization</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed mb-3">
+                            Data points were combined from different sources due to the lack of a complete pre-existing dataset. The merging focused on highlighting opposing interpretations.
+                        </p>
+                        <ul class="list-disc list-inside text-xs text-gray-500 space-y-1 pl-4">
+                            <li>Aim was to show interpretative inconsistencies.</li>
+                            <li>Translation and Etymology columns serve primarily for context.</li>
+                            <li>Link al Dataset (Google Sheets): <a href="https://docs.google.com/spreadsheets/d/1bEMc1wfIMF3otExb9zqieQAxsSfdBCDZOdFhocw6ygo/edit?gid=531522946#gid=531522946" target="_blank" class="text-alien-primary hover:text-white underline">Link al Foglio Google</a></li>
+                        </ul>
+                    </div>
+
+                    <!-- AI Usage -->
+                    <div class="glass-card p-6 rounded-2xl transition-transform duration-300 border border-alien-primary/50">
+                        <h3 class="text-lg font-bold mb-3 text-white border-b border-alien-primary/50 pb-2">AI Usage</h3>
+                        <p class="text-gray-400 text-sm leading-relaxed mb-3">
+                            AI tools (ChatGPT and Gemini) were used to streamline data comparison and hypothesis generation.
+                        </p>
+                        <ul class="list-disc list-inside text-xs text-gray-500 space-y-1 pl-4">
+                            <li>**ChatGPT:** Used to identify Biglino's debated words and compare interpretations (later manually verified).</li>
+                            <li>**Gemini:** Used for hypothetical analysis of societal consequences if Biglino's theories were confirmed.</li>
+                            <li>AI was supplied with Biglino's PDF, Bible Hub, and Hebrew encyclopedia data.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEZIONE RAW DATASET (Chiudibile/Apribile) -->
+        <section id="dataset-raw" class="py-12 px-6">
+            <div class="max-w-[1600px] mx-auto glass-card rounded-[2.5rem] p-6 md:p-8 border border-white/10 relative overflow-hidden">
+                <div class="flex justify-between items-center border-b border-white/10 pb-4 mb-4 cursor-pointer data-panel-toggle" 
+                     onclick="toggleRawDataPanel()" 
+                     aria-expanded="false" 
+                     aria-controls="raw-data-content">
+                    
+                    <div class="flex items-center gap-4">
+                        <h3 class="font-title text-xl font-bold text-alien-primary">DATA SET</h3>
+                        <span id="data-toggle-icon" class="text-alien-primary">
+                            <!-- Icona Down/Up Arrow -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down"><polyline points="6 9 12 15 18 9"/></svg>
+                        </span>
+                    </div>
+
+                    <!-- Bottone di Download FIX -->
+                    <button onclick="handleDownload()" class="px-4 py-2 rounded-full bg-alien-primary text-black text-xs font-bold tracking-wide hover:bg-white transition-all duration-300 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Scarica (.TSV)
+                    </button>
+                </div>
+
+                <!-- Contenuto del Dataset (Inizialmente chiuso via CSS) -->
+                <div id="raw-data-content" class="data-panel-content">
+                    <!-- Tabella Dati Inserita qui -->
+                    <div class="overflow-x-auto rounded-lg border border-white/10 p-2 bg-black/30">
+                        <table class="w-full text-xs text-gray-300" id="dataset-table-display">
+                            <!-- JS popolerà la tabella qui -->
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIZ 1: BUBBLE CHART (SOSTITUITO CON LA NUOVA VIZ) -->
+        <section id="viz-1" class="py-16 px-6">
+            <div class="max-w-[1600px] mx-auto glass-card rounded-[2.5rem] p-6 md:p-8 border border-white/10 relative overflow-hidden">
+                
+                <div class="relative z-10 mb-6 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/10 pb-4 gap-4">
+                    <div>
+                        <span class="text-alien-primary font-bold tracking-widest uppercase text-xs">VISUALIZATION 01</span>
+                        <h2 class="font-title text-3xl md:text-4xl font-bold mt-1 text-white">INTERPRETIVE DIVERGENCE</h2>
+                        <p class="text-gray-500 text-xs mt-1">Comparing traditional vs. Biglino's literal interpretation.</p>
+                    </div>
+                    <button onclick="toggleModal('viz1-wrapper')" class="bg-white/5 border border-alien-primary/30 hover:bg-alien-primary hover:text-black text-alien-primary px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+                        Expand View
+                    </button>
+                </div>
+
+                <!-- WRAPPER for MODAL: Forced single column view -->
+                <div id="viz1-wrapper" class="flex flex-col gap-6 w-full h-full">
+                    <!-- Chart container: Target for D3 -->
+                    <div id="vis-bubble" class="w-full data-terminal relative group flex flex-col min-h-[850px]">
+                        <div class="terminal-header flex-shrink-0">
+                            <span class="text-[10px] font-mono text-alien-primary animate-pulse">/// RENDER_MODE: BIPOLAR_FLOW_CHART</span>
+                            <div class="flex gap-1"><div class="w-2 h-2 rounded-full bg-red-500"></div><div class="w-2 h-2 rounded-full bg-yellow-500"></div><div class="w-2 h-2 rounded-full bg-green-500"></div></div>
+                        </div>
+                        <!-- D3 content injected here -->
+                    </div>
+                </div>
+                
+                <!-- NEW: Legenda Aggiuntiva per spiegazione grandezza e riferimenti biblici -->
+                <div class="mt-8 p-4 bg-black/30 rounded-xl border border-alien-primary/20">
+                    <h3 class="text-sm font-title font-bold text-alien-cyan mb-2">Viz. 01 Legend & Notes</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Colonna 1: Visualizzazione Dimensione (Drawn with SVG/HTML) -->
+                        <div>
+                            <p class="text-sm font-title text-white mb-2">Dimension (Tanakh Occurrences)</p>
+                            <svg width="100%" height="200" viewBox="0 0 350 200" class="text-white/80">
+                                <!-- Base Y per i centri dei cerchi e per la base del grafico: 175 -->
+                                <!-- Linea di base opaca per riferimento -->
+                                <line x1="20" y1="175" x2="330" y2="175" stroke="#fff" stroke-width="0.5" opacity="0.1"/> 
+
+                                <!-- Centro X costante per i cerchi: 100 -->
+                                <g transform="translate(100, 175)" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <style>
+                                        /* Stili per le linee tangenti e testo */
+                                        .legend-line { stroke: #fff; stroke-width: 1; }
+                                        .legend-text { fill: #fff; font-size: 12px; font-family: 'Orbitron', monospace; text-anchor: start; }
+                                    </style>
+                                    
+                                    <!-- Raggi scelti per coerenza: R75, R45, R22, R7, R3 -->
+                                    
+                                    <!-- 1. Cerchio Max (6828) R=75 -->
+                                    <circle cx="0" cy="-75" r="75"/>
+                                    <line x1="75" y1="-150" x2="175" y2="-150" class="legend-line"/>
+                                    <text x="180" y="-150" dy="0.3em" class="legend-text">6,828</text>
+                                    <line x1="75" y1="-150" x2="75" y2="-75" stroke="#fff" stroke-width="1" opacity="0.5"/>
+
+                                    <!-- 2. 1k (1000) R=45 -->
+                                    <circle cx="0" cy="-45" r="45"/>
+                                    <line x1="45" y1="-90" x2="175" y2="-90" class="legend-line"/>
+                                    <text x="180" y="-90" dy="0.3em" class="legend-text">1k</text>
+                                    <line x1="45" y1="-90" x2="45" y2="-45" stroke="#fff" stroke-width="1" opacity="0.5"/>
+
+                                    <!-- 3. 100 R=22 -->
+                                    <circle cx="0" cy="-22" r="22"/>
+                                    <line x1="22" y1="-44" x2="175" y2="-44" class="legend-line"/>
+                                    <text x="180" y="-44" dy="0.3em" class="legend-text">100</text>
+                                    <line x1="22" y1="-44" x2="22" y2="-22" stroke="#fff" stroke-width="1" opacity="0.5"/>
+
+                                    <!-- 4. 10 R=7 -->
+                                    <circle cx="0" cy="-7" r="7"/>
+                                    <line x1="7" y1="-14" x2="175" y2="-14" class="legend-line"/>
+                                    <text x="180" y="-14" dy="0.3em" class="legend-text">10</text>
+                                    <line x1="7" y1="-14" x2="7" y2="-7" stroke="#fff" stroke-width="1" opacity="0.5"/>
+
+                                    <!-- 5. 1 (Piccolissimo) R=3 -->
+                                    <circle cx="0" cy="-3" r="3"/>
+                                    <line x1="3" y1="-6" x2="175" y2="-6" class="legend-line"/>
+                                    <text x="180" y="-6" dy="0.3em" class="legend-text">1</text>
+                                    <line x1="3" y1="-6" x2="3" y2="-3" stroke="#fff" stroke-width="1" opacity="0.5"/>
+                                    
+                                    <!-- Testo del titolo (Corretto il posizionamento) -->
+                                    <text x="0" y="-120" font-size="10" fill="currentColor" text-anchor="middle" dy="0.3em" opacity="0.1" font-family="'Orbitron', sans-serif">SIZE SCALE</text>
+                                </g>
+                            </svg>
+                        </div>
+
+                        <!-- Colonna 2: Visualizzazione Riferimento Biblico (Drawn with SVG) -->
+                        <div class="pt-4 md:pt-0">
+                            <p class="text-sm font-title text-white mb-2">Bible Reference Format</p>
+                            <svg width="100%" height="180" viewBox="0 0 350 180" class="text-white">
+                                <g transform="translate(40, 40)" font-family="'Orbitron', monospace" font-size="20">
+                                    <!-- Testo di riferimento -->
+                                    <text x="0" y="0" fill="#00FFFF">Gen</text>
+                                    <text x="60" y="0" fill="#00FF41">14</text>
+                                    <text x="90" y="0" fill="#FFD84D">:1</text>
+
+                                    <!-- BOOK (Cyan) -->
+                                    <line x1="10" y1="10" x2="10" y2="60" stroke="#00FFFF" stroke-width="1"/>
+                                    <line x1="10" y1="60" x2="100" y2="60" stroke="#00FFFF" stroke-width="1"/>
+                                    <text x="110" y="60" fill="#00FFFF" font-size="12">Book</text>
+
+                                    <!-- CHAPTER (Green) -->
+                                    <line x1="75" y1="10" x2="75" y2="40" stroke="#00FF41" stroke-width="1"/>
+                                    <line x1="75" y1="40" x2="100" y2="40" stroke="#00FF41" stroke-width="1"/>
+                                    <text x="110" y="40" fill="#00FF41" font-size="12">Chapter</text>
+
+                                    <!-- VERSE (Yellow) -->
+                                    <line x1="100" y1="10" x2="100" y2="20" stroke="#FFD84D" stroke-width="1"/>
+                                    <line x1="100" y1="20" x2="110" y2="20" stroke="#FFD84D" stroke-width="1"/>
+                                    <text x="120" y="20" fill="#FFD84D" font-size="12">Verse</text>
+                                </g>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </section>
+
+        <!-- VIZ 2: HYBRID SCATTER (Original, untouched) -->
+        <section id="viz-2" class="py-16 px-6">
+            <div class="max-w-[1600px] mx-auto glass-card rounded-[2.5rem] p-6 md:p-8 border border-white/10 min-h-[850px] flex flex-col">
+                <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/10 pb-4 gap-4">
+                    <div>
+                        <span class="text-alien-primary font-bold tracking-widest uppercase text-xs">VISUALIZATION 02</span>
+                        <h2 class="font-title text-3xl font-bold mt-1 text-white">FREQUENCY vs THEME</h2>
+                        <p class="text-gray-500 text-xs mt-1">Correlating occurrence frequency with theological domain.</p>
+                    </div>
+                    <button onclick="toggleModal('viz2-wrapper')" class="bg-white/5 border border-alien-primary/30 hover:bg-alien-primary hover:text-black text-alien-primary px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
+                        Expand View
+                    </button>
+                </div>
+
+                <!-- WRAPPER FOR MODAL: Forced Row Layout to keep panel on RIGHT -->
+                <div id="viz2-wrapper" class="flex flex-row gap-6 h-full w-full overflow-hidden">
+                    <!-- Chart (Left) -->
+                    <div id="chart-wrapper" class="w-3/4 h-full relative data-terminal flex flex-col group">
+                        <div class="terminal-header flex-shrink-0">
+                            <span class="text-[10px] font-mono text-alien-primary animate-pulse">/// RENDER_MODE: LOG_SCATTER_HYBRID</span>
+                            <span class="text-[10px] font-mono text-gray-500">X: LOG(COUNT) | Y: CATEGORY</span>
+                        </div>
+                        <div id="vis-hybrid" class="w-full flex-grow bg-black/40 transition-colors group-hover:bg-black/60 min-h-[400px]"></div>
+                        
+                        <!-- Horizontal Legend Strip for Scatter -->
+                        <div id="scatter-legend" class="p-3 bg-black/80 border-t border-white/10 flex flex-wrap justify-center gap-6 flex-shrink-0">
+                            <!-- JS Populated -->
+                        </div>
+                    </div>
+
+                    <!-- Info Panel (Right - Always Right) -->
+                    <div id="info-panel" class="w-1/4 bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/5 flex flex-col overflow-y-auto h-full shadow-inner flex-shrink-0 min-w-[300px]">
+                        <div id="panel-content-default" class="h-full flex flex-col items-center justify-center text-center opacity-40">
+                            <div class="w-16 h-16 rounded-full border-2 border-dashed border-alien-primary/50 flex items-center justify-center mb-4 text-alien-primary animate-spin-slow">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <p class="text-sm font-bold uppercase tracking-widest text-gray-300">Select Data Node</p>
+                            <p class="text-xs mt-2 text-gray-500">Hover over the chart to analyze semantic divergence.</p>
+                        </div>
+                        <div id="panel-content-dynamic" class="hidden h-full flex flex-col space-y-6"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- IMPACT SECTION (INTEGRATED TNE DATA) -->
+        <section id="impact" class="py-24 px-6">
+            <div class="max-w-7xl mx-auto">
+                <div class="mb-16 border-b border-white/10 pb-6">
+                    <h2 class="font-title text-4xl md:text-5xl font-bold text-white">TNE <span class="text-alien-primary">IMPACT MATRIX</span></h2>
+                    <p class="text-gray-400 mt-2 font-mono">Theological Nullification Event: Sociological Consequences (0-5 Years)</p>
+                </div>
+
+                <!-- I. Outcomes Table -->
+                <div class="mb-16">
+                    <h3 class="text-xl font-bold text-alien-primary mb-6 font-title border-l-4 border-alien-primary pl-3">I. Structured Dataset of Outcomes</h3>
+                    <div class="glass-card rounded-xl overflow-hidden overflow-x-auto">
+                        <table class="w-full text-left border-collapse alien-table text-sm">
+                            <thead>
+                                <tr>
+                                    <th class="p-4">Domain</th>
+                                    <th class="p-4">Outcome</th>
+                                    <th class="p-4 text-center">Valence</th>
+                                    <th class="p-4">Rationale</th>
+                                </tr>
+                            </thead>
+                            <tbody id="outcomes-body">
+                                <!-- JS Injected -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- II. Matrix Grid -->
+                <div class="mb-16">
+                    <h3 class="text-xl font-bold text-alien-primary mb-6 font-title border-l-4 border-alien-primary pl-3">II. Sociological Impact Matrix</h3>
+                    <div id="matrix-grid-container" class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                        <!-- Headers Generated by JS -->
+                    </div>
+                </div>
+
+                <!-- III. Detailed Analysis -->
+                <div>
+                    <h3 class="font-title text-xl font-bold text-alien-primary mb-6 border-l-4 border-alien-primary pl-3">III. Detailed Analysis of Cascading Effects</h3>
+                    <div class="grid lg:grid-cols-2 gap-6">
+                        
+                        <!-- Card A -->
+                        <div class="glass-card p-6 rounded-2xl border-t-2 border-t-alien-primary impact-card">
+                            <h4 class="text-lg font-bold text-white mb-3">A. Culture & Shared Narratives</h4>
+                            <p class="text-gray-300 text-sm mb-4 leading-relaxed">The TNE obliterates the source code of nearly all global culture. Architecture, music, art, law, and literature lose their foundational symbolism.</p>
+                            <ul class="list-disc list-inside space-y-2 text-sm text-gray-400 mb-6">
+                                <li><b class="text-white">Loss of Cultural Anchor:</b> Cathedrals become historical anomalies; sacred art loses spiritual resonance.</li>
+                                <li><b class="text-white">The Narrative Scramble:</b> Race to establish a compelling replacement, likely <b>scientific humanism</b>, which lacks the cosmic scale and emotional depth of prior religious stories.</li>
+                                <li><b class="text-white">Ritual Crisis:</b> Life rituals become clinically utilitarian. A massive boom in philosophical movements focused on developing new, emotionally satisfying secular rites.</li>
+                            </ul>
+                            
+                            <div class="bg-white/5 p-4 rounded-lg border border-white/5">
+                                <h5 class="text-xs font-bold text-alien-primary uppercase mb-2">Historical Research and the Alien-God Thesis</h5>
+                                <p class="text-xs text-gray-300 leading-relaxed mb-2">
+                                    Pre-TNE historical research has identified popular narratives that serve as<b>"Transition Therapy"</b> to the trauma of nullification. These theories (Palaeo-Contact) offer a narrative bridge, replacing the spiritual entity with a physical and technologically advanced one.
+                                </p>
+                                <ul class="list-disc list-inside space-y-1 text-xs text-gray-500">
+                                    <li>Example: <a href="https://www.ilgiornale.it/news/e-se-dio-fosse-alieno-allora-speriamo-che-sia-almeno.html" target="_blank" class="text-alien-primary hover:text-white underline">Il Giornale - E se Dio fosse alieno...</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Card B -->
+                        <div class="glass-card p-6 rounded-2xl border-t-2 border-t-alien-primary impact-card">
+                            <h4 class="text-lg font-bold text-white mb-3">B. Morality & Ethical Governance</h4>
+                            <p class="text-gray-300 text-sm mb-4 leading-relaxed">The collapse of divine law necessitates a transition from <b>deontological duty</b> to <b>consequentialist</b> justification.</p>
+                            <ul class="list-disc list-inside space-y-2 text-sm text-gray-400 mb-6">
+                                <li><b class="text-white">The Deontological Shift:</b> Moral decisions slow down as justification must be constantly outcome-based.</li>
+                                <li><b class="text-white">Law and Order:</b> Rationalization of legal systems, removing moralistic laws that lack demonstrable secular harm.</li>
+                                <li><b class="text-white">Universal Ethics:</b> Convergence on a global human rights framework based purely on observable empathy.</li>
+                            </ul>
+
+                            <div class="bg-white/5 p-4 rounded-lg border border-white/5">
+                                <h5 class="text-xs font-bold text-alien-primary uppercase mb-2">Sociological Research (Secular Ethics)</h5>
+                                <p class="text-xs text-gray-300 leading-relaxed mb-2">
+                                    The moral vacuum of TNE pushes us to accelerate the adoption of ethical frameworks based on empathy and evolutionary utilitarianism.
+                                </p>
+                                <ul class="list-disc list-inside space-y-1 text-xs text-gray-500">
+                                    <li>Focus: Replacing "divine laws" with ethics of the <b>"Maximum Collective Well-being"</b>.</li>
+                                    <li>Reference: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC3501430/" target="_blank" class="text-alien-primary hover:text-white underline">Sam Harris: The Moral Landscape</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Card C -->
+                        <div class="glass-card p-6 rounded-2xl border-t-2 border-t-alien-primary impact-card">
+                            <h4 class="text-lg font-bold text-white mb-3">C. Governance & Political Restructuring</h4>
+                            <p class="text-gray-300 text-sm mb-4 leading-relaxed">Regimes relying on divine mandate face an immediate <b>Legitimacy Crisis</b>, leading to potential secular revolutions.</p>
+                            <ul class="list-disc list-inside space-y-2 text-sm text-gray-400 mb-6">
+                                <li><b class="text-white">The Rise of Technocracy:</b> Power favors experts; potentially leading to hyper-efficient but sterile governance.</li>
+                                <li><b class="text-white">Extremist Vacuum-Filling:</b> New Cults of Personality emerge to offer emotional certainty.</li>
+                            </ul>
+
+                            <div class="bg-white/5 p-4 rounded-lg border border-white/5">
+                                <h5 class="text-xs font-bold text-alien-primary uppercase mb-2">Political Research (Disclosure Effect)</h5>
+                                <p class="text-xs text-gray-300 leading-relaxed mb-2">
+                                    Modeled on the precedent of UAP distrust, the TNE is the final "disclosure" that destroys trust in vertical leadership.
+                                </p>
+                                <ul class="list-disc list-inside space-y-1 text-xs text-gray-500">
+                                    <li>Parallel: UAP USA hearings and the demand for transparency.</li>
+                                    <li>Reference: <a href="https://oversight.house.gov/release/hearing-wrap-up-government-must-be-more-transparent-about-uaps/" target="_blank" class="text-alien-primary hover:text-white underline">House Oversight Hearing on UAPs</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Card D -->
+                        <div class="glass-card p-6 rounded-2xl border-t-2 border-t-alien-primary impact-card">
+                            <h4 class="text-lg font-bold text-white mb-3">D. Interpersonal Dynamics</h4>
+                            <p class="text-gray-300 text-sm mb-4 leading-relaxed">The most intimate effects are felt at the family and community level due to the dissolution of shared identity.</p>
+                            <ul class="list-disc list-inside space-y-2 text-sm text-gray-400 mb-6">
+                                <li><b class="text-white">The Death of Shared Identity:</b> Families bonded by faith fracture.</li>
+                                <li><b class="text-white">New Forgiveness Frameworks:</b> Burden of reconciliation shifts to secular restorative justice.</li>
+                                <li><b class="text-white">Authenticity and Anxiety:</b> Increase in authenticity as choices are based on intrinsic human values.</li>
+                            </ul>
+
+                            <div class="bg-white/5 p-4 rounded-lg border border-white/5">
+                                <h5 class="text-xs font-bold text-alien-primary uppercase mb-2">Psychological Research (Collective Mourning)</h5>
+                                <p class="text-xs text-gray-300 leading-relaxed mb-2">
+                                    The TNE is a Collective Mourning for the loss of a "Powerful Protector".
+                                </p>
+                                <ul class="list-disc list-inside space-y-1 text-xs text-gray-500">
+                                    <li>Model: Kübler-Ross's stages of mourning applied to the nullification of reality.</li>
+                                    <li>Reference: <a href="https://www.cruse.org.uk/understanding-grief/effects-of-grief/five-stages-of-grief/" target="_blank" class="text-alien-primary hover:text-white underline">Understanding Grief (Kübler-Ross)</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Card E -->
+                        <div class="glass-card p-6 rounded-2xl border-t-2 border-t-alien-primary impact-card lg:col-span-2">
+                            <h4 class="text-lg font-bold text-white mb-3">E. Sociological Function of Religion (The Sacred Canopy)</h4>
+                            <p class="text-gray-300 text-sm mb-4 leading-relaxed">Peter L. Berger's thesis highlights that religion provides a <b>"Sacred Canopy"</b>—a cosmic framework that protects individuals from chaos.</p>
+                            <ul class="list-disc list-inside space-y-2 text-sm text-gray-400 mb-6">
+                                <li><b class="text-white">Externalization:</b> The TNE proves the divine aspect of society was an illusion.</li>
+                                <li><b class="text-white">The Canopy's Collapse:</b> Exposing the arbitrary nature of human reality.</li>
+                                <li><b class="text-white">Implication:</b> Necessity for rapid, collective re-externalization of new secular truths.</li>
+                            </ul>
+
+                            <div class="bg-white/5 p-4 rounded-lg border border-white/5">
+                                <h5 class="text-xs font-bold text-alien-primary uppercase mb-2">Sociological Research (Peter L. Berger)</h5>
+                                <p class="text-xs text-gray-300 leading-relaxed mb-2">
+                                    The theory of <b>"Social Construction of Reality"</b> (Berger & Luckmann) provides the theoretical foundation for understanding the extent of the TNE shock.
+                                </p>
+                                <p class="text-xs text-gray-500">
+                                    Reference: <a href="https://www.youtube.com/watch?v=3TMYZAW_Gac" target="_blank" class="text-alien-primary hover:text-white underline">Social Construction of Reality</a>
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="py-20 border-t border-white/5 text-center bg-black">
+            <div class="max-w-2xl mx-auto px-6">
+                <h2 class="font-title text-2xl font-bold mb-6 text-white">END OF FILE</h2>
+                <p class="text-gray-500 text-sm font-mono">
+                    Project Genesis | Analysis Complete
+                </p>
+                <p class="text-gray-500 text-sm font-mono">
+                    Making Sense of data: Chiara Baldini | Melanie Turano | Zeno Tamagni
+                </p>
+            </div>
+        </footer>
+    </main>
+
+    <!-- Tooltip Div -->
+    <div id="d3-tooltip" class="d3-tooltip"></div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        // --- DATASET ---
+        const rawData = `ID\tHebrew Term\tTransliteration\tLiteral Translation\tTraditional Interpretation\tBiglino's Interpretation\tLinguistic Analysis\tMain Biblical References\tBibleGateway Links\tTheme\tTanakh Occurrence Count\tAcademic Sources\r
+T001\tאֱלֹהִים\tElohim\tGods / Powerful Ones\tThe unique God of Israel, despite the plural form.\tPlurality of concrete and physical beings, not spiritual; commanders.\tPlural masculine form; root א-ל meaning strength.\tGen 1:1\thttps://www.biblegateway.com/passage/?search=Gen+1%3A1\tDivinity\t2600\tBDB; Jewish Encyclopedia; Biglino\r
+T002\tיהוה\tYHWH (Yahweh)\tThe personal divine Name\tGod of Israel, the Lord.\tA specific being with a personal name.\tTetragrammaton; likely causative verb form.\tEx 3:14\thttps://www.biblegateway.com/passage/?search=Ex+3%3A14\tDivinity\t6828\tJewish Encyclopedia; BHS; Biglino\r
+T003\tאָדוֹן / אֲדֹנָי\tAdon / Adonai\tLord / My Lord\tTitle of respect for God.\tHuman or non-human authority figure.\tSingular/plural forms; used also for human masters.\tPs 110:1\thttps://www.biblegateway.com/passage/?search=Ps+110%3A1\tAuthority\t439\tBDB; Britannica\r
+T004\tשַׁדַּי\tShaddai\tAlmighty / Powerful One\tDivine epithet meaning Almighty.\tA device or weapon of high power.\tLikely from root ש-ד-ד meaning overpower.\tGen 17:1\thttps://www.biblegateway.com/passage/?search=Gen+17%3A1\tDivinity\t48\tBDB; Jewish Encyclopedia; Biglino\r
+T005\tרוּחַ\tRuach\tSpirit / Wind / Breath\tThe Holy Spirit or God's life breath.\tWind, breath, physical force, or a type of device.\tMeans breath, wind, spirit.\tGen 1:2\thttps://www.biblegateway.com/passage/?search=Gen+1%3A2\tCreation\t378\tBDB; Jewish Encyclopedia; Biglino\r
+T006\tמַלְאָךְ\tMalak\tMessenger / Angel\tA spiritual being serving God.\tA human or non-human physical messenger/emissary.\tRoot ל-א-ך meaning send.\tGen 19:1\thttps://www.biblegateway.com/passage/?search=Gen+19%3A1\tAuthority\t213\tBDB; Jewish Encyclopedia\r
+T007\tעֵץ הַדַּעַת\t'Etz haDa'at\tTree of Knowledge\tMetaphor for moral knowledge/divine wisdom.\tA device for acquiring knowledge.\tEtz means tree, Da'at means knowledge.\tGen 2:17\thttps://www.biblegateway.com/passage/?search=Gen+2%3A17\tCreation\t3\tBDB; Jewish Encyclopedia; Biglino\r
+T008\tמִדּוֹת\tMiddot\tAttributes\tDivine attributes like mercy, justice, compassion.\tPhysical measures, proportions, or dimensions.\tRoot מ-ד-ד meaning measure.\tEx 25:10\thttps://www.biblegateway.com/passage/?search=Ex+25%3A10\tDivinity\t28\tBDB; Jewish Encyclopedia; Biglino\r
+T009\tכָּבוֹד\tKavod\tGlory / Honor\tGod's divine presence or radiance.\tHeavy object, mass, or a physical manifestation.\tRoot כ-ב-ד meaning be heavy.\tEx 16:10\thttps://www.biblegateway.com/passage/?search=Gen+16%3A10\tDivinity\t200\tBDB; Jewish Encyclopedia; Biglino\r
+T010\tעֲבֹדָה\tAvodah\tService / Worship\tReligious worship and devotion.\tPhysical work, labor, or service.\tRoot ע-ב-ד meaning work/serve.\tEx 12:25\thttps://www.biblegateway.com/passage/?search=Gen+12%3A25\tRitual/worship\t145\tBDB; Jewish Encyclopedia; Biglino\r
+T011\tאֹרַח\tOrach\tPath / Way\tThe way of God, moral path.\tPhysical road, track, or trajectory.\tMeans path or road.\tGen 18:19\thttps://www.biblegateway.com/passage/?search=Gen+18%3A19\tMorality\t58\tBDB; Jewish Encyclopedia; Biglino\r
+T012\tשָׁמַיִם\tShamayim\tHeavens / Sky\tThe dwelling place of God, spiritual realm.\tThe physical sky, atmosphere, or celestial bodies.\tDual form of root ש-מ-י-ם.\tGen 1:1\thttps://www.biblegateway.com/passage/?search=Gen+1%3A1\tCreation\t420\tBDB; Jewish Encyclopedia; Biglino\r
+T013\tתְּהוֹם\tTehom\tDeep / Abyss\tThe primeval cosmic waters or chaos.\tPhysical ocean, deep body of water, or abyss.\tRelated to Babylonian Tiamat (chaos).\tGen 1:2\thttps://www.biblegateway.com/passage/?search=Gen+1%3A2\tCreation\t35\tBDB; Jewish Encyclopedia; Biglino\r
+T014\tמַיִם\tMayim\tWater\tSymbolic of life, purification, or judgment.\tPhysical water, liquid, or fluid.\tDual form of root מ-י-ם.\tGen 1:2\thttps://www.biblegateway.com/passage/?search=Gen+1%3A2\tCreation\t580\tBDB; Jewish Encyclopedia; Biglino\r
+T015\tיָם\tYam\tSea / West\tThe sea, often associated with chaos.\tPhysical sea, body of water.\tMeans sea.\tGen 1:10\thttps://www.biblegateway.com/passage/?search=Gen+1%3A10\tCreation\t390\tBDB; Jewish Encyclopedia; Biglino\r
+T016\tאֶרֶץ\tEretz\tEarth / Land\tThe created world, the ground.\tPhysical ground, land, or planet.\tMeans land/earth.\tGen 1:1\thttps://www.biblegateway.com/passage/?search=Gen+1%3A1\tCreation\t2504\tBDB; Jewish Encyclopedia; Biglino\r
+T017\tמַצָּה\tMatzah\tUnleavened Bread\tSymbolic of haste in the Exodus.\tA specific, quick-made food ration.\tRoot מ-צ-ה meaning suck dry.\tEx 12:8\thttps://www.biblegateway.com/passage/?search=Gen+12%3A8\tRitual/worship\t51\tBDB; Jewish Encyclopedia; Biglino\r
+T018\tשַׁבָּת\tShabbat\tSabbath\tHoly day of rest and commemoration of creation.\tA specific cycle or rest period in the operation schedule.\tRoot ש-ב-ת meaning rest.\tGen 2:3\thttps://www.biblegateway.com/passage/?search=Gen+2%3A3\tRitual/worship\t150\tBDB; Jewish Encyclopedia; Biglino\r
+T019\tזֶבַח\tZevach\tSacrifice\tOffering to God for atonement or thanks.\tA ritual slaughter or offering of material goods.\tRoot ז-ב-ח meaning slaughter.\tGen 31:54\thttps://www.biblegateway.com/passage/?search=Gen+31%3A54\tRitual/worship\t162\tBDB; Jewish Encyclopedia; Biglino\r
+T020\tכֹּהֵן\tKohen\tPriest\tSpiritual intermediary, serving God.\tA functional manager, administrator, or technical expert.\tRoot כ-ה-ן meaning officiate.\tGen 14:18\thttps://www.biblegateway.com/passage/?search=Gen+14%3A18\tAuthority\t750\tBDB; Jewish Encyclopedia; Biglino\r
+T021\tקֹדֶשׁ\tKodesh\tHoliness\tDivine quality, separateness.\tA state of being reserved, set apart, or quarantined.\tRoot ק-ד-שׁ meaning be separate.\tEx 3:5\thttps://www.biblegateway.com/passage/?search=Gen+3%3A5\tDivinity\t470\tBDB; Jewish Encyclopedia; Biglino\r
+T022\tתּוֹרָה\tTorah\tTeaching / Law\tDivine instruction, the Pentateuch.\tA set of directives, technical manuals, or operational instructions.\tRoot י-ר-ה meaning teach.\tEx 12:49\thttps://www.biblegateway.com/passage/?search=Ex+12%3A49\tMorality\t220\tBDB; Jewish Encyclopedia; Biglino\r
+T023\tמִצְוָה\tMitzvah\tCommandment\tA divine religious obligation.\tA specific order, instruction, or regulation.\tRoot צ-ו-ה meaning command.\tGen 26:5\thttps://www.biblegateway.com/passage/?search=Gen+26%3A5\tMorality\t183\tBDB; Jewish Encyclopedia; Biglino\r
+T024\tנָבִיא\tNavi\tProphet\tOne who speaks for God.\tAn intelligence liaison, messenger, or official communicator.\tRoot נ-ב-א meaning announce/speak.\tGen 20:7\thttps://www.biblegateway.com/passage/?search=Gen+20%3A7\tAuthority\t310\tBDB; Jewish Encyclopedia; Biglino\r
+T025\tאוֹר\tOr\tLight\tDivine light, creation light.\tPhysical illumination, energy source, or signal.\tMeans light.\tGen 1:3\thttps://www.biblegateway.com/passage/?search=Gen+1%3A3\tCreation\t120\tBDB; Jewish Encyclopedia; Biglino\r
+T026\tחֹשֶׁךְ\tChoshech\tDarkness\tAbsence of light, spiritual judgment.\tPhysical darkness or absence of illumination.\tMeans darkness.\tGen 1:2\thttps://www.biblegateway.com/passage/?search=Gen+1%3A2\tCreation\t100\tBDB; Jewish Encyclopedia; Biglino\r
+T027\tעָנָן\tAnan\tCloud\tSymbol of God's presence (Shekinah).\tA physical cloud, smoke, or obscuring phenomenon.\tMeans cloud/cover.\tEx 13:21\thttps://www.biblegateway.com/passage/?search=Ex+13%3A21\tDivinity\t90\tBDB; Jewish Encyclopedia; Biglino\r
+T028\tאֶבֶן\tEven\tStone\tSymbol of strength, stability, or monument.\tA physical stone, mineral, or building material.\tMeans stone.\tGen 2:12\thttps://www.biblegateway.com/passage/?search=Gen+2%3A12\tCreation\t280\tBDB; Jewish Encyclopedia; Biglino\r
+T029\tחַי\tChai\tLife / Living\tDivine life force, eternal life.\tPhysical life, biological existence.\tMeans life/alive.\tGen 1:20\thttps://www.biblegateway.com/passage/?search=Gen+1%3A20\tCreation\t140\tBDB; Jewish Encyclopedia; Biglino\r
+T030\tאֱמוּנָה\tEmunah\tFaith / Trust\tSpiritual trust in God.\tReliability, fidelity, trustworthiness (often human).\tRoot א-מ-ן meaning firm/reliable.\tDeut 32:20\thttps://www.biblegateway.com/passage/?search=Deut+32%3A20\tMorality\t49\tBDB; Jewish Encyclopedia; Biglino\r
+T031\tצֶדֶק\tTzedek\tRighteousness / Justice\tDivine standard of morality.\tFairness, correctness, just dealing (often social).\tMeans justice/rightness.\tGen 15:6\thttps://www.biblegateway.com/passage/?search=Gen+15%3A6\tMorality\t280\tBDB; Jewish Encyclopedia; Biglino\r
+T032\tבְּרִית\tBerit\tCovenant / Treaty\tSolemn pact between God and man.\tA formal treaty, agreement, or contract (often political).\tMeans covenant/alliance.\tGen 6:18\thttps://www.biblegateway.com/passage/?search=Gen+6%3A18\tDivinity\t280\tBDB; Jewish Encyclopedia; Biglino\r
+T033\tסוֹד\tSod\tSecret / Council\tGod's hidden plan or inner council.\tA private meeting, confidence, or military briefing announce.\tAmos 3:7\thttps://www.biblegateway.com/passage/?search=Amos+3%3A7\tCommunication\t31\tBDB; Jewish Encyclopedia; Biglino\r
+T034\tדָּבָר\tDabar\tWord / Message\tDivine word or command.\tCommunication device.\tRoot ד-ב-ר meaning speak.\tGen 15:1\thttps://www.biblegateway.com/passage/?search=Gen+15%3A1\tCommunication\t1439\tBDB; Jewish Encyclopedia; Biglino\r
+T035\tבָּרָא\tBara\tCreate / Form\tCreation ex nihilo by God.\tManufacture/engineering.\tRoot ב-ר-א meaning create.\tGen 1:1\thttps://www.biblegateway.com/passage/?search=Gen+1%3A1\tCreation\t54\tBDB; Jewish Encyclopedia; Biglino\r
+T036\tבְּרֵאשִׁית\tBereshit\tIn the beginning\tOpening formula of Genesis.\tStart of operations.\tRoot ר-א-ש meaning head/start.\tGen 1:1\thttps://www.biblegateway.com/passage/?search=Gen+1%3A1\tCreation\t1\tBDB; Jewish Encyclopedia; Biglino\r
+T037\tשֶׁמֶשׁ\tShemesh\tSun\tCelestial body created by God.\tEnergy source.\tRoot ש-מ-ש meaning shine.\tJosh 10:12\thttps://www.biblegateway.com/passage/?search=Josh+10%3A12\tAstral/energy\t134\tBDB; Jewish Encyclopedia; Biglino\r
+T038\tעֵץ הַחַיִּים\t'Etz haChayyim\tTree of Life\tSymbol of eternal life/divine provision.\tA source of biological longevity/resource.\tEtz means tree, Chayyim means life.\tGen 2:9\thttps://www.biblegateway.com/passage/?search=Gen+2%3A9\tCreation\t2\tBDB; Jewish Encyclopedia; Biglino\r
+T039\tאֲשֵׁרָה\tAsherah\tAsherah / Goddess\tCanaanite goddess, forbidden idol.\tA technical device, possibly a weapon or vehicle.\tCanaanite deity name.\tEx 34:13\thttps://www.biblegateway.com/passage/?search=Ex+34%3A13\tRitual/worship\t40\tBDB; Jewish Encyclopedia; Biglino\r
+T040\tעָרֵי מִקְלָט\t'Arei Miklat\tCities of Refuge\tCities designated by God for accidental manslayers.\tQuarantine areas, restricted access zones.\t'Arim means cities, Miklat means refuge.\tNum 35:11\thttps://www.biblegateway.com/passage/?search=Num+35%3A11\tMorality\t15\tBDB; Jewish Encyclopedia; Biglino\r
+T041\tכֶּסֶף\tKesef\tSilver / Money\tCurrency, often symbolic of redemption.\tPhysical silver, metal, or monetary unit.\tMeans silver/money.\tGen 17:13\thttps://www.biblegateway.com/passage/?search=Gen+17%3A13\tMorality\t403\tBDB; Jewish Encyclopedia; Biglino\r
+T042\tמִשְׁפָּט\tMishpat\tJudgment / Justice\tDivine justice, legal ruling.\tA legal statute, formal decision, or technical ruling.\tRoot ש-פ-ט meaning judge.\tGen 18:19\thttps://www.biblegateway.com/passage/?search=Gen+18%3A19\tMorality\t421\tBDB; Jewish Encyclopedia; Biglino\r
+T043\tחֵן\tChen\tGrace / Favor\tDivine unmerited favor.\tPhysical favor, acceptance, or appeal.\tMeans favor/grace.\tGen 6:8\thttps://www.biblegateway.com/passage/?search=Gen+6%3A8\tDivinity\t68\tBDB; Jewish Encyclopedia; Biglino\r
+T044\tקָרַב\tKarav\tDraw near / Offer\tSpiritual approach to God, offering sacrifice.\tPhysical approach, move closer, or present an item.\tRoot ק-ר-ב meaning come near.\tGen 18:23\thttps://www.biblegateway.com/passage/?search=Gen+18%3A23\tRitual/worship\t290\tBDB; Jewish Encyclopedia; Biglino\r
+T045\tשָׁלֹשׁ\tShalosh\tThree\tNumerical significance, often related to law.\tThe number three, a simple quantity.\tCardinal number.\tGen 6:10\thttps://www.biblegateway.com/passage/?search=Gen+6%3A10\tDivinity\t200\tBDB; Jewish Encyclopedia; Biglino\r
+T046\tאַרְבַּע\tArba\tFour\tNumerical significance, often related to creation.\tThe number four, a simple quantity.\tCardinal number.\tGen 2:10\thttps://www.biblegateway.com/passage/?search=Gen+2%3A10\tCreation\t300\tBDB; Jewish Encyclopedia; Biglino\r
+T047\tחָמֵשׁ\tChamesh\tFive\tNumerical significance.\tThe number five, a simple quantity.\tCardinal number.\tGen 5:32\thttps://www.biblegateway.com/passage/?search=Gen+5%3A32\tCreation\t350\tBDB; Jewish Encyclopedia; Biglino\r
+T048\tשֶׁבַע\tSheva\tSeven\tSymbol of completeness, divine perfectness.\tThe number seven, a simple quantity or specific cycle.\tCardinal number.\tGen 2:2\thttps://www.biblegateway.com/passage/?search=Gen+2%3A2\tDivinity\t380\tBDB; Jewish Encyclopedia; Biglino\r
+T049\tעָשָׂר\tAsar\tTen\tNumerical significance, often related to law.\tThe number ten, a simple quantity.\tCardinal number.\tGen 6:3\thttps://www.biblegateway.com/passage/?search=Gen+6%3A3\tMorality\t250\tBDB; Jewish Encyclopedia; Biglino\r
+T050\tמָצִיץ\tMatzitz\tShoot / Bud\tRefers to growth, possibly Messianic.\tA physical shoot, sprout, or projectile.\tRoot צ-י-ץ meaning sprout.\tIs 4:2\thttps://www.biblegateway.com/passage/?search=Is+4%3A2\tCreation\t5\tBDB; Jewish Encyclopedia; Biglino\r
+T051\tיָצָא\tYatza\tGo out / Come forth\tOften used for God's action in the world.\tPhysical movement from one place to another.\tMeans exit/come out.\tGen 2:10\thttps://www.biblegateway.com/passage/?search=Gen+2%3A10\tAuthority\t1030\tBDB; Jewish Encyclopedia; Biglino\r
+T052\tאָרַר\tArar\tCurse\tDivine punishment/condemnation.\tA binding legal/operational limitation or sanction.\tMeans curse/bind.\tGen 3:14\thttps://www.biblegateway.com/passage/?search=Gen+3%3A14\tAuthority\t60\tBDB; Jewish Encyclopedia; Biglino\r
+T053\tדּוּמָה\tDumah\tSilence / Destruction\tPlace of the dead, silence.\tA technical command for silence or suppression.\tPs 94:17\thttps://www.biblegateway.com/passage/?search=Ps+94%3A17\tDivinity\t10\tBDB; Jewish Encyclopedia; Biglino\r
+T054\tכִּסֵּא\tKisse\tThrone\tSymbol of God's dominion.\tA physical seat or command station.\tMeans chair/throne.\tEx 11:5\thttps://www.biblegateway.com/passage/?search=Ex+11%3A5\tAuthority\t135\tBDB; Jewish Encyclopedia; Biglino\r
+T055\tמַעֲשֶׂה\tMa'aseh\tDeed / Work\tGod's acts of creation/salvation.\tA physical act, procedure, or manufactured object.\tRoot ע-שׂ-ה meaning do/make.\tGen 2:2\thttps://www.biblegateway.com/passage/?search=Gen+2%3A2\tCreation\t235\tBDB; Jewish Encyclopedia; Biglino\r
+T056\tקַיִץ\tKayitz\tSummer / Fruit\tTime of harvest, end times metaphor.\tA specific time period or season.\tMeans summer/harvest.\tGen 8:22\thttps://www.biblegateway.com/passage/?search=Gen+8%3A22\tCreation\t18\tBDB; Jewish Encyclopedia; Biglino\r
+T057\tרָקִיעַ\tRaqia\tFirmament / Expanse\tThe solid dome separating waters above and below.\tA solid, hammered-out metallic structure or dome.\tRoot ר-ק-ע meaning stamp/spread out.\tGen 1:6\thttps://www.biblegateway.com/passage/?search=Gen+1%3A6\tCreation\t17\tBDB; Jewish Encyclopedia; Biglino\r
+T058\tצְבָא\tTz'va\tHost / Army\tHeavenly host, God's army.\tA physical army, unit, or contingent.\tMeans army/host.\tGen 2:1\thttps://www.biblegateway.com/passage/?search=Gen+2%3A1\tAuthority\t485\tBDB; Jewish Encyclopedia; Biglino\r
+T059\tכַּנְפֵי\tKanfei\tWings / Edges\tWings of God's protection.\tPhysical wings, edges, or extremities.\tMeans wing/edge.\tGen 7:9\thttps://www.biblegateway.com/passage/?search=Gen+7%3A9\tDivinity\t100\tBDB; Jewish Encyclopedia; Biglino\r
+T060\tאֵשׁ\tEsh\tFire\tDivine presence, purification, judgment.\tPhysical fire, heat, or energy release.\tMeans fire.\tGen 15:17\thttps://www.biblegateway.com/passage/?search=Gen+15%3A17\tDivinity\t370\tBDB; Jewish Encyclopedia; Biglino\r
+T061\tשָׁמַע\tShama\tHear / Obey\tSpiritual obedience to God's voice.\tPhysical act of hearing or listening to commands.\tRoot ש-מ-ע meaning hear/listen.\tGen 3:17\thttps://www.biblegateway.com/passage/?search=Gen+3%3A17\tCommunication\t1150\tBDB; Jewish Encyclopedia; Biglino\r
+T062\tסֻכָּה\tSukkah\tBooth / Tabernacle\tTemporary dwelling, religious holiday structure.\tA temporary physical structure, shelter, or tent.\tMeans booth/hut.\tLev 23:34\thttps://www.biblegateway.com/passage/?search=Lev+23%3A34\tRitual/worship\t30\tBDB; Jewish Encyclopedia; Biglino\r
+T063\tמִזְבֵּחַ\tMizbeach\tAltar\tPlace for spiritual sacrifice to God.\tA physical structure for material offerings or disposal.\tRoot ז-ב-ח meaning slaughter/sacrifice.\tGen 8:20\thttps://www.biblegateway.com/passage/?search=Gen+8%3A20\tRitual/worship\t400\tBDB; Jewish Encyclopedia; Biglino\r
+T064\tצֶמַח\tTzemach\tSprout / Branch\tMessianic title, growth.\tA physical plant, vegetation, or growth.\tRoot צ-מ-ח meaning sprout.\tIs 4:2\thttps://www.biblegateway.com/passage/?search=Is+4%3A2\tCreation\t60\tBDB; Jewish Encyclopedia; Biglino\r
+T065\tשֶׁקֶר\tSheker\tLie / Falsehood\tSpiritual sin, untruth.\tA deliberate misstatement, factual error, or deception.\tMeans lie/false.\tEx 5:9\thttps://www.biblegateway.com/passage/?search=Ex+5%3A9\tMorality\t110\tBDB; Jewish Encyclopedia; Biglino\r
+T066\tיָשָׁר\tYashar\tStraight / Upright\tSpiritual righteousness.\tPhysical straightness, direct route, or correct position.\tMeans straight/right.\tNum 23:10\thttps://www.biblegateway.com/passage/?search=Num+23%3A10\tMorality\t120\tBDB; Jewish Encyclopedia; Biglino\r
+T067\tחָכְמָה\tChokhmah\tWisdom\tDivine wisdom, spiritual insight.\tTechnical skill, intelligence, or knowledge acquisition.\tMeans wisdom/skill.\tEx 28:3\thttps://www.biblegateway.com/passage/?search=Ex+28%3A3\tDivinity\t150\tBDB; Jewish Encyclopedia; Biglino\r
+T068\tגַּן עֵדֶן\tGan Eden\tGarden of Eden\tParadise, place of perfect communion with God.\tA physical, enclosed, fertile land area or installation.\tGan means garden, Eden means delight.\tGen 2:8\thttps://www.biblegateway.com/passage/?search=Gen+2%3A8\tCreation\t13\tBDB; Jewish Encyclopedia; Biglino\r
+T069\tחֶרֶם\tCherem\tBan / Devotion\tDivine dedication to destruction, utterly devoted.\tA total ban, material destruction, or physical quarantine.\tRoot ח-ר-ם meaning devote to destruction.\tNum 21:2\thttps://www.biblegateway.com/passage/?search=Num+21%3A2\tAuthority\t37\tBDB; Jewish Encyclopedia; Biglino\r
+T070\tמָגֵן\tMagen\tShield / Defender\tGod as protector.\tA physical shield, defensive device, or barrier.\tMeans shield/protection.\tGen 15:1\thttps://www.biblegateway.com/passage/?search=Gen+15%3A1\tDivinity\t60\tBDB; Jewish Encyclopedia; Biglino\r
+T071\tגֵּיהִנּוֹם\tGehinnom\tGehenna / Hell\tPlace of spiritual punishment.\tA physical location, valley of Hinnom, used for waste disposal.\tValley of Hinnom's sons.\tJosh 15:8\thttps://www.biblegateway.com/passage/?search=Josh+15%3A8\tDivinity\t13\tBDB; Jewish Encyclopedia; Biglino\r
+T072\tבַּר\tBar\tSon / Grain\tOften refers to Messianic sonship.\tPhysical grain, produce, or outside area.\tMeans son/grain.\tGen 41:35\thttps://www.biblegateway.com/passage/?search=Gen+41%3A35\tCreation\t70\tBDB; Jewish Encyclopedia; Biglino\r
+T073\tשָׁלֵם\tShalem\tWhole / Complete\tSpiritual perfection, peace.\tPhysical completeness, undamaged, or peace treaty.\tMeans complete/safe.\tGen 15:16\thttps://www.biblegateway.com/passage/?search=Gen+15%3A16\tMorality\t115\tBDB; Jewish Encyclopedia; Biglino\r
+T074\tעָבַר\tAvar\tPass over / Transgress\tSpiritual sin, passing over during Passover.\tPhysical crossing, moving across, or physical transgression.\tMeans pass over/cross.\tGen 8:1\thttps://www.biblegateway.com/passage/?search=Gen+8%3A1\tMorality\t300\tBDB; Jewish Encyclopedia; Biglino\r
+T075\tחָזָק\tChazak\tStrong / Firm\tDivine strength, spiritual courage.\tPhysical strength, reinforcement, or firmness.\tMeans strong/hard.\tDeut 3:28\thttps://www.biblegateway.com/passage/?search=Deut+3%3A28\tAuthority\t290\tBDB; Jewish Encyclopedia; Biglino\r
+T076\tכֹּחַ\tKoach\tStrength / Power\tDivine omnipotence.\tPhysical strength, ability, or material power.\tMeans strength/force.\tGen 4:12\thttps://www.biblegateway.com/passage/?search=Gen+4%3A12\tDivinity\t120\tBDB; Jewish Encyclopedia; Biglino\r
+T077\tעַל־כְּנָפַיִם\tAl-Knafayim\tOn wings\tMetaphor for God's swift help.\tPhysically riding on wings, aircraft, or flying device.\tAl means on/over, Knafayim means wings.\tEx 19:4\thttps://www.biblegateway.com/passage/?search=Ex+19%3A4\tDivinity\t5\tBDB; Jewish Encyclopedia; Biglino\r
+T078\tכְּרוּבִים\tKeruvim\tCherubim\tAngelic beings, guardians of Eden.\tPhysical guardians, humanoid robots, or technical devices.\tPlural of Keruv.\tGen 3:24\thttps://www.biblegateway.com/passage/?search=Gen+3%3A24\tDivinity\t90\tBDB; Jewish Encyclopedia; Biglino\r
+T079\tרָעָב\tRa'av\tFamine / Hunger\tDivine judgment, physical need.\tPhysical famine, lack of food, or hunger.\tMeans hunger/famine.\tGen 12:10\thttps://www.biblegateway.com/passage/?search=Gen+12%3A10\tMorality\t100\tBDB; Jewish Encyclopedia; Biglino\r
+T080\tשִׂמְחָה\tSimcha\tJoy / Gladness\tSpiritual joy in God's presence.\tPhysical happiness, celebration, or emotional state.\tMeans joy/rejoicing.\tDeut 12:7\thttps://www.biblegateway.com/passage/?search=Deut+12%3A7\tMorality\t95\tBDB; Jewish Encyclopedia; Biglino\r
+T081\tאַבִּיר\tAbbir\tMighty One / Strong\tDivine epithet.\tA physical strong person, leader, or bull/animal.\tMeans strong/mighty.\tGen 49:24\thttps://www.biblegateway.com/passage/?search=Gen+49%3A24\tAuthority\t12\tBDB; Jewish Encyclopedia; Biglino\r
+T082\tאֵל\tEl\tGod / Power\tGeneric term for deity, root of Elohim.\tA powerful being, leader, or force.\tGen 14:18\thttps://www.biblegateway.com/passage/?search=Gen+14%3A18\tDivinity\t230\tBDB; Jewish Encyclopedia; Biglino\r
+T083\tמָּקוֹם\tMaqom\tPlace / Dwelling\tOften a euphemism for God (The Place).\tA physical location, site, or specific territory.\tMeans place/site.\tGen 12:6\thttps://www.biblegateway.com/passage/?search=Gen+12%3A6\tDivinity\t390\tBDB; Jewish Encyclopedia; Biglino\r
+T084\tעוֹלָם\tOlam\tEternity / World\tEternity, deep past, or future.\tA long duration, the physical world/universe.\tMeans long time/age.\tGen 3:22\thttps://www.biblegateway.com/passage/?search=Gen+3%3A22\tDivinity\t430\tBDB; Jewish Encyclopedia; Biglino\r
+T085\tשָׁלוֹם\tShalom\tPeace / Wholeness\tSpiritual peace, well-being from God.\tPhysical peace, safety, treaty, or health.\tMeans peace/completeness.\tGen 15:15\thttps://www.biblegateway.com/passage/?search=Gen+15%3A15\tMorality\t230\tBDB; Jewish Encyclopedia; Biglino\r
+T086\tנֶפֶשׁ\tNefesh\tSoul / Being\tThe spiritual soul, innermost self.\tThe throat, life-force, or a concrete living being.\tMeans throat, breath, soul.\tGen 2:7\thttps://www.biblegateway.com/passage/?search=Gen+2%3A7\tCreation\t754\tBDB; Jewish Encyclopedia; Biglino\r
+T087\tעֵץ\tEtz\tTree / Wood\tMetaphor for life, knowledge, or sustenance.\tPhysical tree, plant, or wood material.\tMeans tree/wood.\tGen 1:11\thttps://www.biblegateway.com/passage/?search=Gen+1%3A11\tCreation\t330\tBDB; Jewish Encyclopedia; Biglino\r
+T088\tזָכַר\tZakhar\tRemember\tGod remembering His covenant, spiritual remembrance.\tPhysical act of recalling information, mental recollection.\tMeans recall/mention.\tGen 8:1\thttps://www.biblegateway.com/passage/?search=Gen+8%3A1\tDivinity\t220\tBDB; Jewish Encyclopedia; Biglino\r
+T089\tשַׂר\tSar\tPrince / Leader\tOften used for high-ranking spiritual beings.\tA physical leader, officer, commander, or chief.\tMeans prince/chief.\tGen 12:15\thttps://www.biblegateway.com/passage/?search=Gen+12%3A15\tAuthority\t420\tBDB; Jewish Encyclopedia; Biglino\r
+T090\tדַּרְכּוֹ\tDarko\tHis Way\tGod's moral direction/path.\tHis physical road, path, or method of travel.\tDarach means path/way.\tGen 6:12\thttps://www.biblegateway.com/passage/?search=Gen+6%3A12\tMorality\t150\tBDB; Jewish Encyclopedia; Biglino\r
+T091\tעָפָר\tAfar\tDust / Earth\tSymbol of human mortality, origin.\tPhysical dust, soil, or material.\tMeans dust/earth.\tGen 2:7\thttps://www.biblegateway.com/passage/?search=Gen+2%3A7\tCreation\t110\tBDB; Jewish Encyclopedia; Biglino\r
+T092\tבַּת\tBat\tDaughter / Maiden\tFemale descendant, often used metaphorically.\tA physical female child or young woman.\tMeans daughter/girl.\tGen 5:4\thttps://www.biblegateway.com/passage/?search=Gen+5%3A4\tCreation\t580\tBDB; Jewish Encyclopedia; Biglino\r
+T093\tשָׁמַע קוֹל\tShama Qol\tHear a voice\tHearing the voice of God.\tPhysically hearing a sound or command from a person/device.\tShama means hear, Qol means voice.\tGen 3:8\thttps://www.biblegateway.com/passage/?search=Gen+3%3A8\tCommunication\t32\tBDB; Jewish Encyclopedia; Biglino\r
+T094\tתּוֹלְדוֹת\tToledot\tGenerations / Account\tGenealogical record, structure of Genesis.\tPhysical record, list of descendants, or account of events.\tMeans generations/account.\tGen 2:4\thttps://www.biblegateway.com/passage/?search=Gen+2%3A4\tCreation\t19\tBDB; Jewish Encyclopedia; Biglino\r
+T095\tנָשָׂא\tNasa\tLift / Forgive\tGod lifting sin, spiritual forgiveness.\tPhysical act of lifting, carrying, or moving an object.\tMeans lift/carry.\tGen 4:13\thttps://www.biblegateway.com/passage/?search=Gen+4%3A13\tMorality\t300\tBDB; Jewish Encyclopedia; Biglino\r
+T096\tבִּכּוּרִים\tBikkurim\tFirst Fruits\tReligious offering of the first harvest.\tPhysical first produce, offering of material resources.\tMeans first ripe fruits.\tEx 23:16\thttps://www.biblegateway.com/passage/?search=Ex+23%3A16\tRitual/worship\t15\tBDB; Jewish Encyclopedia; Biglino\r
+T097\tחָזָה\tChazah\tSee / Behold\tSpiritual vision, prophetic sight of God.\tPhysical act of seeing, observing, or surveying.\tMeans gaze/see.\tGen 15:1\thttps://www.biblegateway.com/passage/?search=Gen+15%3A1\tCommunication\t50\tBDB; Jewish Encyclopedia; Biglino\r
+T098\tנָגַע\tNaga\tTouch / Strike\tGod striking or touching (often negatively).\tPhysical contact, striking, or reaching.\tMeans touch/reach.\tGen 3:3\thttps://www.biblegateway.com/passage/?search=Gen+3%3A3\tAuthority\t150\tBDB; Jewish Encyclopedia; Biglino\r
+T099\tזָרַע\tZara\tSow / Seed\tSpiritual offspring, creation.\tPhysical act of planting seed, genetic material.\tMeans sow/scatter.\tGen 1:29\thttps://www.biblegateway.com/passage/?search=Gen+1%3A29\tCreation\t56\tBDB; Jewish Encyclopedia; Biglino\r
+T100\tבָּנָה\tBanah\tBuild / Construct\tGod building the woman from the rib, building the temple.\tPhysical construction, assembly, or erection.\tMeans build/construct.\tGen 2:22\thttps://www.biblegateway.com/passage/?search=Gen+2%3A22\tCreation\t370\tBDB; Jewish Encyclopedia; Biglino`;
+
+        let dataset = [];
+
+        // --- TNE IMPACT DATA (Original) ---
+        const outcomesData = [
+            { domain: "Psychological", outcome: "Mass Nihilism & Crisis", valence: "Negative", rationale: "Loss of comfort, afterlife, and cosmic justice. High anxiety." },
+            { domain: "Psychological", outcome: "Radical Humanism", valence: "Positive", rationale: "Shift to self-created purpose and tangible human improvement." },
+            { domain: "Cultural", outcome: "Institutional Collapse", valence: "Negative", rationale: "Massive decline in religious authority and funding." },
+            { domain: "Cultural", outcome: "Secular Rites", valence: "Positive", rationale: "Development of new community-based rituals." },
+            { domain: "Political", outcome: "End of Theocracy", valence: "Positive", rationale: "Removal of religious rationale from state policy." },
+            { domain: "Political", outcome: "Ideological Cults", valence: "Negative", rationale: "Vacuum filled by authoritarian figures or cults of personality." },
+            { domain: "Ethical", outcome: "Moral Vacuum", valence: "Negative", rationale: "Initial breakdown of duty-based ethics." },
+            { domain: "Ethical", outcome: "Evolved Ethics", valence: "Positive", rationale: "Stabilization around empathy and social contract." },
+        ];
+
+        const matrixData = {
+            "Individual": {
+                immediate: "<b>Mass Existential Crisis:</b> Cognitive dissonance & grief.",
+                medium: "<b>Redefined Purpose:</b> Shift to material goals.",
+                long: "<b>Authentic Humanism:</b> Self-evolved virtues.",
+            },
+            "Institutional": {
+                immediate: "<b>Legitimacy Crisis:</b> Collapse of religious authority.",
+                medium: "<b>Technocratic Rise:</b> Focus on efficiency over faith.",
+                long: "<b>Rationalized Law:</b> Ethics based on harm reduction.",
+            },
+            "Cultural": {
+                immediate: "<b>Symbolic Vacuum:</b> Sacred art loses meaning.",
+                medium: "<b>Ritual Reconstruction:</b> Rise of secular ceremonies.",
+                long: "<b>Secular Metaphysic:</b> New shared reality.",
+            }
+        };
+
+        // --- COLORS: ALIEN XENO-PALETTE (Original) ---
+        const alienPalette = [
+            "#00FF41", // Alien Green
+            "#00FFFF", // Cyan
+            "#FF00FF", // Magenta
+            "#FFFF00", // Yellow
+            "#FF3D00", // Orange
+            "#9D00FF"  // Purple
+        ];
+        
+        let backgroundSynth = null;
+        let isMuted = false;
+        let isPlaying = false; 
+        let masterVolume = -22; 
+
+        // --- NUOVI PARAMETRI PER VIZ 1 (dal secondo codice) ---
+        const VIZ1_CONFIG = {
+            CONTAINER_ID: '#vis-bubble',
+            KEYS: {
+                FREQUENCY: "count", 
+                LEFT_LABEL: "traditional", 
+                RIGHT_LABEL: "alien", 
+                TERM_LABEL: "transliteration"
+            },
+            margin: { top: 20, right: 10, bottom: 60, left: 10 }, 
+            textColumnDistance: 150, 
+            lineEndDistance: 150, 
+            themeColors: {
+                "Creation":                 "#FFD84D", // giallo luminoso
+                "Divinity":                 "#FF4C4C", // rosso intenso
+                "Authority":                "#00C2FF", // blu elettrico (Power & Authority)
+                "Morality":                 "#7DFF57", // verde neon (Spiritual & Energy)
+                "Ritual/worship":           "#FF8C00", // arancione vivo (Ritual/worship - Places/Structures)
+                "Communication":            "#B84DFF", // viola brillante (Interaction & Systems)
+                "Astral/energy":            "#00FFD5"  // turchese alieno (Conflict/Opposition/Astral)
+            }
+        };
+
+        // --- UTILITY FUNZIONI GLOBALI (Audio Controls & Download Fix) ---
+
+        function updateAudioIcons() {
+            const muteIcon = document.getElementById('mute-icon');
+            
+            if (muteIcon) {
+                if (Tone.Master.mute || Tone.Master.volume.value <= -29) { 
+                    muteIcon.innerHTML = `<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" stroke-linecap="round" stroke-linejoin="round"/><line x1="22" x2="16" y1="9" y2="15" stroke-linecap="round" stroke-linejoin="round"/><line x1="16" x2="22" y2="9" y1="15" stroke-linecap="round" stroke-linejoin="round"/>`;
+                } else {
+                    muteIcon.innerHTML = `<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 9a5 5 0 0 1 0 6" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728" stroke-linecap="round" stroke-linejoin="round"/>`;
+                }
+            }
+        }
+
+        function toggleMute() {
+            if (!backgroundSynth) { initAudio(); return; }
+
+            if (Tone.Master.mute) {
+                Tone.Master.mute = false;
+                isMuted = false;
+                const slider = document.getElementById('volume-slider');
+                const sliderValue = 100 * ((Tone.Master.volume.value - (-30)) / 30);
+                slider.value = sliderValue > 0 ? sliderValue : 30;
+                
+            } else {
+                Tone.Master.mute = true;
+                isMuted = true;
+            }
+            updateAudioIcons();
+        }
+
+        function setVolumeFromSlider(sliderValue) {
+            if (!backgroundSynth) { initAudio(); }
+            
+            const minDb = -30; 
+            const maxDb = 0;
+            
+            let newDb = minDb + (maxDb - minDb) * (sliderValue / 100);
+            
+            Tone.Master.volume.rampTo(newDb, 0.1);
+            
+            if (sliderValue > 0) {
+                Tone.Master.mute = false;
+                isMuted = false;
+            } else {
+                Tone.Master.mute = true;
+                isMuted = true;
+            }
+
+            updateAudioIcons();
+        }
+
+        // Funzione per forzare il download del file TSV (FIXED FOR GLOBAL SCOPE)
+        function handleDownload() {
+            const blob = new Blob([rawData], { type: 'text/tab-separated-values;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            link.href = url;
+            link.download = 'DDD_dataset_alieni - Jewish terms.tsv';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Funzione per mostrare/nascondere il pannello dati (FIXED FOR GLOBAL SCOPE)
+        function toggleRawDataPanel() {
+            const content = document.getElementById('raw-data-content');
+            const toggleButton = document.querySelector('.data-panel-toggle');
+            
+            const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+
+            if (!isExpanded) {
+                if (document.getElementById('dataset-table-display').childElementCount === 0) {
+                    renderRawDataAsTable();
+                }
+                content.classList.add('open');
+                toggleButton.setAttribute('aria-expanded', 'true');
+            } else {
+                content.classList.remove('open');
+                toggleButton.setAttribute('aria-expanded', 'false');
+            }
+        }
+
+
+        // --- INIT ---
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Parse Data
+            dataset = d3.tsvParse(rawData, (d) => {
+                const count = parseInt(d['Tanakh Occurrence Count']);
+                if (isNaN(count) || count <= 0) return null;
+                return {
+                    id: d.ID,
+                    term: d['Hebrew Term'],
+                    transliteration: d.Transliteration,
+                    literal: d['Literal Translation'],
+                    traditional: d['Traditional Interpretation'],
+                    alien: d["Biglino's Interpretation"] || '',
+                    theme: d.Theme,
+                    count: count,
+                    // Campi aggiuntivi per la nuova visualizzazione
+                    linguisticAnalysis: d['Linguistic Analysis'],
+                    MainBiblicalReferences: d['Main Biblical References'],
+                    BibleGatewayLinks: d['BibleGateway Links']
+                };
+            }).filter(d => d !== null);
+
+            // Init Charts & UI
+            initCustomViz1(); 
+            initHybridChart();
+            initCanvasBackground();
+            renderOutcomes();
+            renderMatrix();
+            
+            // Init Scroll Spy
+            updateActiveNav();
+            window.addEventListener('scroll', updateActiveNav);
+            window.addEventListener('resize', () => { 
+                initCustomViz1(); // Ridisegna VIZ 1 al resize
+                initHybridChart(); // Ridisegna VIZ 2 al resize
+            });
+
+            // Audio is initialized and started on first user interaction
+            document.body.addEventListener('click', initAudio, { once: true });
+        });
+
+        // --- AUDIO LOGIC (Tone.js) ---
+        function initAudio() {
+            if (backgroundSynth) return; // Already initialized
+            
+            // 1. Synth and Effects (Ambient Pad Sound)
+            const reverb = new Tone.Reverb(3).toDestination();
+            backgroundSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: "sine" },
+                envelope: {
+                    attack: 2, 
+                    decay: 0.5, 
+                    sustain: 0.4,
+                    release: 5 
+                }
+            }).chain(reverb);
+            
+            // Imposta il volume iniziale basato sullo slider (che è a 30 per default)
+            const slider = document.getElementById('volume-slider');
+            const initialSliderValue = parseInt(slider.value, 10);
+            setVolumeFromSlider(initialSliderValue); 
+            
+            // 2. Music Sequence (Minor chords for mystery/documentary feel)
+            const minorChords = [
+                ["C3", "Eb3", "G3"], 
+                ["G2", "Bb2", "D3"],
+                ["A2", "C3", "E3"],
+                ["F2", "Ab2", "C3"]
+            ];
+            
+            // Semplice sequencer di accordi lenti
+            let currentChord = 0;
+            const loop = new Tone.Loop(time => {
+                const chordNotes = minorChords[currentChord % minorChords.length];
+                backgroundSynth.triggerAttackRelease(chordNotes, "1m", time); // Durata 1m (1 misura) per suoni lenti
+                currentChord++;
+            }, "1m").start(0);
+
+            // 3. Start Transport
+            Tone.start();
+            Tone.Transport.start();
+            isPlaying = true;
+            updateAudioIcons();
+        }
+
+        // --- NAVIGATION LOGIC (Scroll-Spy) ---
+        const navSections = [
+            { id: 'intro', element: null },
+            { id: 'methodology', element: null },
+            { id: 'dataset-raw', element: null }, // Aggiunta la nuova sezione
+            { id: 'viz-1', element: null },
+            { id: 'impact', element: null }
+        ];
+
+        function updateActiveNav() {
+            let activeId = 'intro';
+            const navLinks = document.querySelectorAll('.nav-link');
+            const offset = 100; // Offset for fixed header
+
+            // Initialize elements once
+            navSections.forEach(section => {
+                if (!section.element) {
+                    section.element = document.getElementById(section.id);
+                }
+            });
+
+            const scrollPosition = window.scrollY;
+
+            // Find the active section based on scroll position
+            for (let i = navSections.length - 1; i >= 0; i--) {
+                const section = navSections[i];
+                if (section.element && section.element.offsetTop <= scrollPosition + offset) {
+                    activeId = section.id;
+                    break;
+                }
+            }
+
+            // Apply 'active' class to the correct link
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('data-target') === activeId) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        // --- MODAL LOGIC (MOVES DOM ELEMENTS to preserve Events) ---
+        let originalParent = null;
+        let currentChartId = null;
+
+        function toggleModal(containerId) {
+            const modal = document.getElementById('chart-modal');
+            const content = document.getElementById('modal-content');
+            const container = document.getElementById(containerId);
+            const chartDiv = document.getElementById('vis-bubble'); // Contenitore D3 di VIZ 1
+
+            if (!container) return;
+
+            if (modal.classList.contains('hidden')) {
+                // OPEN MODAL
+                originalParent = container.parentElement;
+                currentChartId = containerId;
+                
+                d3.select("#d3-tooltip").style("opacity", 0);
+                
+                content.appendChild(container);
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Previeni scroll
+                
+                // *** LOGICA DI SCORRIMENTO DINAMICO PER VIZ 1 ***
+                if (containerId === 'viz1-wrapper') {
+                    // Prepara il div per scorrere all'interno del modale
+                    chartDiv.style.height = '100%';
+                    chartDiv.style.overflowY = 'auto';
+                    document.getElementById('vis-bubble').innerHTML = ''; // Pulisci prima di disegnare
+                    initCustomViz1(true); // Ridisegna VIZ 1 in modalità modale
+                } else if (containerId === 'viz2-wrapper') {
+                    document.getElementById('vis-hybrid').innerHTML = '';
+                    initHybridChart();
+                }
+
+            } else {
+                // CLOSE MODAL
+                closeModal();
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('chart-modal');
+            const chartDiv = document.getElementById('vis-bubble');
+            
+            d3.select("#d3-tooltip").style("opacity", 0);
+
+            if (currentChartId && originalParent) {
+                const container = document.getElementById(currentChartId);
+                originalParent.appendChild(container); // Sposta indietro
+
+                // *** RIPRISTINO VISTA NORMALE PER VIZ 1 ***
+                if (currentChartId === 'viz1-wrapper') {
+                    // Rimuovi gli stili forzati per lo scorrimento del modale
+                    chartDiv.style.height = '';
+                    chartDiv.style.overflowY = 'hidden'; // O come era di default
+                    document.getElementById('vis-bubble').innerHTML = '';
+                    initCustomViz1(false); // Ridisegna VIZ 1 in modalità normale
+                } else if (currentChartId === 'viz2-wrapper') {
+                    document.getElementById('vis-hybrid').innerHTML = '';
+                    initHybridChart();
+                }
+            }
+            
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto'; // Ripristina scroll
+            originalParent = null;
+            currentChartId = null;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape") closeModal();
+        });
+
+        // Funzione per generare la tabella HTML dai dati TSV grezzi
+        function renderRawDataAsTable() {
+            const tableContainer = document.getElementById('dataset-table-display');
+            if (!tableContainer) return;
+
+            // Analizza il TSV (usando la stessa logica di D3 per le intestazioni)
+            const rows = rawData.trim().split('\r\n');
+            if (rows.length === 0) return;
+
+            const headers = rows[0].split('\t');
+            let tableHTML = '<thead><tr>';
+
+            // Costruisci l'intestazione
+            headers.forEach(header => {
+                tableHTML += `<th class="font-title text-[0.6rem] uppercase">${header}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            // Costruisci le righe dei dati
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].split('\t');
+                tableHTML += '<tr>';
+                cells.forEach(cell => {
+                    tableHTML += `<td>${cell}</td>`;
+                });
+                tableHTML += '</tr>';
+            }
+            tableHTML += '</tbody>';
+
+            tableContainer.innerHTML = tableHTML;
+        }
+        
+        // --- VIZ 1: CUSTOM BIPOLAR CHART (Sostituzione della Bubble Chart) ---
+        function initCustomViz1(isModal = false) {
+            const config = VIZ1_CONFIG;
+            const container = document.querySelector(config.CONTAINER_ID);
+            
+            // Re-map dataset for easier access
+            let vizData = dataset.map(d => ({
+                id: d.id,
+                frequency_num: d.count,
+                trad_text: d.traditional,
+                alien_text: d.alien,
+                term_text: d.transliteration,
+                theme: d.theme,
+                hebrew_term: d.term,
+                // I campi 'linguisticAnalysis', etc., sono stati aggiunti al dataset in DOMContentLoaded
+                // e sono accessibili tramite le proprietà dell'oggetto `d` originale se necessario.
+            }));
+
+            if (!container) return;
+            
+            const currentWidth = container.clientWidth;
+            
+            // Calcola l'altezza necessaria per tutti i punti
+            const bubbleSpacing = 60; // distanza verticale desiderata tra centri delle bolle
+            const requiredHeight = vizData.length * bubbleSpacing + 150; // + buffer per titoli e margini
+
+            // In modalità normale, usiamo un'altezza fissa o l'altezza richiesta, se minore.
+            // In modalità modale, usiamo sempre l'altezza richiesta per lo scroll.
+            const targetHeight = isModal ? requiredHeight : 850; 
+            
+            const dynamicHeight = Math.max(requiredHeight, targetHeight);
+            
+            // Calcola le dimensioni effettive dell'area di disegno
+            const width = currentWidth - config.margin.left - config.margin.right;
+            const height = dynamicHeight - config.margin.top - config.margin.bottom; 
+            
+            if (width <= 0) return; 
+
+            d3.select(config.CONTAINER_ID).html("");
+            
+            // Ordina i dati per frequenza decrescente
+            vizData.sort((a, b) => b.frequency_num - a.frequency_num);
+
+            // 2. Setup SVG con altezza dinamica
+            const svg = d3.select(config.CONTAINER_ID)
+                .append("svg")
+                .attr("width", "100%")
+                .attr("height", dynamicHeight)
+                .attr("viewBox", `0 0 ${currentWidth} ${dynamicHeight}`) 
+                .attr("preserveAspectRatio", "xMidYMid meet")
+                .append("g")
+                .attr("transform", `translate(${config.margin.left},${config.margin.top})`);
+
+            // 3. Scales
+            const maxFrequency = d3.max(vizData, d => d.frequency_num);
+            
+            const yBubble = d3.scalePoint()
+                .domain(vizData.map(d => d.term_text))
+                .range([100, height]) // Inizia a 100 per lasciare spazio alla legenda/titoli
+                .padding(1); 
+
+            const r = d3.scaleSqrt()
+                .domain([1, maxFrequency])
+                .range([5, 60]); 
+
+            const xAxisPosition = width / 2; 
+
+            // 4. Assi e Intestazioni
+            // Aggiunge la label sopra la colonna centrale
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("x", xAxisPosition)
+                .attr("y", 80) 
+                .style("text-anchor", "middle")
+                .style("font-size", "14px")
+                .text("Hebrew Terms");
+            
+            // Label Sinistra
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("x", xAxisPosition - config.textColumnDistance)
+                .attr("y", 80) 
+                .style("text-anchor", "end")
+                .style("font-size", "14px")
+                .text("TRADITIONAL INTERPRETATION");
+
+            // Label Destra
+            svg.append("text")
+                .attr("class", "axis-label")
+                .attr("x", xAxisPosition + config.textColumnDistance)
+                .attr("y", 80) 
+                .style("text-anchor", "start")
+                .style("font-size", "14px")
+                .text("ALIEN HYPOTHESIS");
+
+
+            // 👉👉 LEGENDA COLORE (Tema)
+            const legendData = Object.keys(config.themeColors).map(k => ({
+                name: k,
+                color: config.themeColors[k]
+            }));
+
+            const legendItemHeight = 18;
+            const legendXOffset = 20;
+
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${legendXOffset}, ${config.margin.top + 10})`);
+
+            const legendItems = legend.selectAll("g.legend-item")
+                .data(legendData)
+                .enter()
+                .append("g")
+                .attr("class", "legend-item")
+                .attr("transform", (d, i) => {
+                    const col = Math.floor(i / 3);
+                    const row = i % 3;
+                    return `translate(${col * 180}, ${row * legendItemHeight})`;
+                });
+
+            legendItems.append("circle")
+                .attr("cx", 0)
+                .attr("cy", 0)
+                .attr("r", 6)
+                .attr("fill", d => config.themeColors[d.name] || "#00FF41") 
+                .style("box-shadow", "0 0 5px currentColor");
+
+            legendItems.append("text")
+                .attr("class", "legend-label")
+                .attr("x", 12)
+                .attr("y", 0)
+                .attr("dy", "0.32em")
+                .text(d => d.name);
+
+            // 5. Tooltip (Usa l'ID del tooltip globale)
+            const tooltip = d3.select("#d3-tooltip");
+
+            const mouseover = function(event, d) {
+                d3.select(this)
+                    .style("stroke", "var(--alien-cyan)") 
+                    .style("stroke-width", 3)
+                    .style("opacity", 1);
+                
+                // Mappa il testo per il tooltip globale
+                tooltip
+                    .html(`
+                        <h4 class="font-['Orbitron'] text-lg text-alien-primary">${d.term_text} (${d.hebrew_term})</h4>
+                        <p class="text-xs text-gray-300 mb-2 uppercase tracking-widest">${d.theme}</p>
+                        <p class="text-xs border-t border-gray-600 pt-2 text-gray-400">
+                            <strong class="text-white">Occurrences:</strong> ${d3.format(",")(d.frequency_num)}<br>
+                            <strong class="text-white">Traditional:</strong> ${d.trad_text}<br>
+                            <strong class="text-alien-primary">Alien:</strong> ${d.alien_text}
+                        </p>
+                    `)
+                    .style("left", `${event.pageX + 20}px`) 
+                    .style("top", `${event.pageY - 20}px`)
+                    .style("opacity", 1);
+            };
+
+            const mouseleave = function(event, d) {
+                d3.select(this)
+                    .style("stroke", "none")
+                    .style("opacity", 1);
+                tooltip.style("opacity", 0);
+            };
+
+            // 6. Disegna le Bolle (colore per tema)
+            svg.append('g')
+                .selectAll("circle")
+                .data(vizData)
+                .join("circle")
+                .attr("class", "bubble-node")
+                .attr("cx", xAxisPosition) 
+                .attr("cy", d => yBubble(d.term_text)) 
+                .attr("r", d => r(d.frequency_num)) 
+                .style("fill", d => config.themeColors[d.theme] || "#00FF41") 
+                .style("opacity", 1) 
+                .on("mouseover", mouseover)
+                .on("mouseleave", mouseleave);
+
+            // 7. Gruppo etichette + linee
+            const labelGroup = svg.append('g')
+                .selectAll("g")
+                .data(vizData)
+                .join("g")
+                .attr("transform", d => `translate(${xAxisPosition},${yBubble(d.term_text)})`); 
+
+            // Testo Sinistro (Traditional Interpretation)
+            labelGroup.append("text")
+                .attr("class", "side-label left-label") 
+                .attr("x", d => -config.textColumnDistance) 
+                .attr("y", 0)
+                .attr("dy", "0.35em") 
+                .style("text-anchor", "end") 
+                .text(d => d.trad_text); 
+
+            // Testo Destro (Biglino's Interpretation)
+            labelGroup.append("text")
+                .attr("class", "side-label right-label") 
+                .attr("x", d => config.textColumnDistance) 
+                .attr("y", 0)
+                .attr("dy", "0.35em")
+                .style("text-anchor", "start") 
+                .text(d => d.alien_text); 
+
+            // 8. Disegna le linee di collegamento 
+            const lineYOffset = 5; // pixel sotto il centro della bolla (leggermente spostato)
+
+            // Linea Sinistra (Dashed - Traditional Interpretation)
+            labelGroup.append("line")
+                .attr("class", "connector-line line-dashed") 
+                .attr("x1", d => -r(d.frequency_num) * 0.707) // Usa raggio per l'inizio
+                .attr("y1", lineYOffset)
+                .attr("x2", d => -config.lineEndDistance) 
+                .attr("y2", lineYOffset); 
+
+            // Linea Destra (Dotted - Biglino's Interpretation)
+            labelGroup.append("line")
+                .attr("class", "connector-line line-dotted") 
+                .attr("x1", d => r(d.frequency_num) * 0.707) // Usa raggio per l'inizio
+                .attr("y1", lineYOffset)
+                .attr("x2", d => config.lineEndDistance) 
+                .attr("y2", lineYOffset); 
+
+            // 9. Etichetta centrale (nome del termine translitterato)
+            labelGroup.append("text")
+                .attr("class", "center-label")
+                .attr("x", 0)
+                .attr("y", 0)
+                .attr("dy", "0.35em")
+                .style("text-anchor", "middle")
+                .text(d => d.term_text);
+        }
+
+        // --- VIZ 2: HYBRID SCATTER (Colored Themes - Original) ---
+        function initHybridChart() {
+            const container = document.getElementById('chart-wrapper');
+            const width = container.clientWidth;
+            const height = container.clientHeight - 60; 
+            const margin = { top: 20, right: 30, bottom: 90, left: 100 }; // Increased bottom margin
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
+
+            // Clear previous SVG content
+            d3.select("#vis-hybrid").selectAll("svg").remove();
+
+            const svg = d3.select("#vis-hybrid").append("svg")
+                .attr("viewBox", `0 0 ${width} ${height}`)
+                .attr("preserveAspectRatio", "xMidYMid meet")
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const themes = Array.from(new Set(dataset.map(d => d.theme))).sort();
+            
+            // MODIFICA QUI: Usiamo i colori definiti in VIZ1_CONFIG per coerenza
+            const themeColorMap = VIZ1_CONFIG.themeColors;
+            const colorScale = d3.scaleOrdinal().domain(themes).range(themes.map(t => themeColorMap[t] || alienPalette[0]));
+
+            const legendContainer = document.getElementById('scatter-legend');
+            // Only populate legend once on initial load
+            if (legendContainer.childElementCount === 0) {
+                 themes.forEach(theme => {
+                    const color = colorScale(theme);
+                    legendContainer.innerHTML += `
+                        <div class="chart-legend-item">
+                            <div class="legend-dot" style="background-color: ${color}; box-shadow: 0 0 8px ${color}"></div>
+                            <span>${theme}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            const xScale = d3.scaleLog()
+                .domain([1, d3.max(dataset, d => d.count) * 1.1])
+                .range([0, innerWidth]);
+
+            const yScale = d3.scaleBand()
+                .domain(themes)
+                .range([innerHeight, 0])
+                .padding(0.5);
+
+            // Axes
+            const xAxis = d3.axisBottom(xScale).ticks(5, ",.1s");
+            const yAxis = d3.axisLeft(yScale);
+
+            svg.append("g")
+                .attr("class", "grid-lines opacity-20")
+                .call(d3.axisLeft(yScale).tickSize(-innerWidth).tickFormat(""))
+                .selectAll("line").attr("stroke", "#fff").attr("stroke-dasharray", "2,2");
+
+            svg.append("g")
+                .attr("transform", `translate(0,${innerHeight})`)
+                .call(xAxis)
+                .selectAll("text").attr("fill", "#888").style("font-family", "monospace");
+
+            svg.append("g")
+                .call(yAxis)
+                .selectAll("text").attr("fill", "#fff").style("font-family", "'Barlow', sans-serif").style("font-size", "10px");
+
+            svg.selectAll(".domain").remove();
+
+            // X-Axis Label (Placed manually below the ticks, using the increased bottom margin)
+            svg.append("text")
+                .attr("x", innerWidth / 2)
+                .attr("y", innerHeight + margin.bottom - 10)
+                .attr("text-anchor", "middle")
+                .style("fill", "#00FF41")
+                .style("font-size", "12px")
+                .style("font-family", "'Orbitron', sans-serif")
+                .text("Tanakh Occurrence Count (Log Scale)");
+
+            // Dots 
+            const tooltip = d3.select("#d3-tooltip");
+            
+            svg.selectAll(".scatter-dot")
+                .data(dataset)
+                .join("circle")
+                .attr("class", "scatter-dot cursor-pointer")
+                .attr("cx", d => xScale(d.count))
+                .attr("cy", d => yScale(d.theme) + yScale.bandwidth() / 2 + (Math.random() - 0.5) * 20)
+                .attr("r", 5)
+                .attr("fill", d => colorScale(d.theme)) // Color by Theme (ora coerente)
+                .attr("stroke", "none")
+                .attr("fill-opacity", 0.8)
+                .on("mouseenter", (event, d) => {
+                    // FIX: Passiamo l'oggetto dato corretto 'd' qui
+                    updatePanel(d);
+                    d3.select(event.target).attr("r", 8).attr("stroke", "#fff").attr("stroke-width", 2);
+                })
+                .on("mouseleave", (event) => {
+                    d3.select(event.target).attr("r", 5).attr("stroke", "none");
+                });
+        }
+
+        function updatePanel(d) {
+            document.getElementById("panel-content-default").classList.add("hidden");
+            const panel = document.getElementById("panel-content-dynamic");
+            panel.classList.remove("hidden");
+            panel.innerHTML = `
+                <div class="border-b border-white/10 pb-4">
+                    <h3 class="text-3xl font-title font-bold text-white">${d.transliteration}</h3>
+                    <p class="text-sm text-gray-500 italic font-serif">${d.term}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-4 text-xs">
+                    <div class="bg-white/5 p-2 rounded">
+                        <span class="text-gray-500 block">Occurrences</span>
+                        <span class="text-white font-mono">${d.count.toLocaleString()}</span>
+                    </div>
+                    <div class="bg-white/5 p-2 rounded">
+                        <span class="text-gray-500 block">Theme</span>
+                        <span class="text-alien-primary">${d.theme}</span>
+                    </div>
+                </div>
+                <div class="mt-4 space-y-4 text-sm">
+                    <div class="p-3 bg-white/5 rounded-lg border-l-2 border-gray-600">
+                        <strong class="block text-gray-400 text-xs mb-1">TRADITIONAL</strong>
+                        <p class="text-gray-300 leading-snug">${d.traditional}</p>
+                    </div>
+                    <div class="p-3 bg-alien-primary/10 rounded-lg border-l-2 border-alien-primary">
+                        <strong class="block text-alien-primary text-xs mb-1">ALIEN HYPOTHESIS</strong>
+                        <p class="text-white leading-snug">${d.alien}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- RENDER TNE CONTENT ---
+        function renderOutcomes() {
+            const tbody = document.getElementById('outcomes-body');
+            outcomesData.forEach(item => {
+                const color = item.valence === 'Negative' ? 'text-red-400' : 'text-alien-primary';
+                const row = `<tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <td class="p-4 text-alien-primary font-bold">${item.domain}</td>
+                    <td class="p-4 text-white">${item.outcome}</td>
+                    <td class="p-4 text-center ${color} font-mono text-xs">${item.valence}</td>
+                    <td class="p-4 text-gray-400 text-xs">${item.rationale}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function renderMatrix() {
+            const container = document.getElementById('matrix-grid-container');
+            const levels = Object.keys(matrixData);
+            // 1. HEADERS
+            const headers = ['Societal Level', 'Immediate (0-6M)', 'Medium-Term (6M-5Y)', 'Long-Term (5Y+)'];
+            const headerColors = ['bg-alien-primary/10 text-alien-primary', 'bg-red-900/20 text-red-400 border-t-2 border-red-500', 'bg-yellow-900/20 text-yellow-400 border-t-2 border-yellow-500', 'bg-blue-900/20 text-blue-400 border-t-2 border-blue-500'];
+            
+            headers.forEach((text, i) => {
+                container.innerHTML += `<div class="glass-card p-4 font-bold flex items-center justify-center text-center text-xs uppercase tracking-widest ${headerColors[i]}">${text}</div>`;
+            });
+
+            levels.forEach(level => {
+                const data = matrixData[level];
+                container.innerHTML += `
+                    <div class="glass-card p-4 font-bold text-gray-300 flex items-center justify-center bg-white/5 border-l-4 border-alien-primary/50">${level}</div>
+                    <div class="glass-card p-4 text-gray-400 text-xs leading-relaxed border-t border-red-900/30 bg-red-900/5 hover:bg-red-900/10 transition-colors">${data.immediate}</div>
+                    <div class="glass-card p-4 text-gray-400 text-xs leading-relaxed border-t border-yellow-900/30 bg-yellow-900/5 hover:bg-yellow-900/10 transition-colors">${data.medium}</div>
+                    <div class="glass-card p-4 text-gray-400 text-xs leading-relaxed border-t border-blue-900/30 bg-blue-900/5 hover:bg-blue-900/10 transition-colors">${data.long}</div>
+                `;
+            });
+        }
+
+        // --- BACKGROUND ANIMATION ---
+        function initCanvasBackground() {
+            const canvas = document.getElementById('bg-canvas');
+            const ctx = canvas.getContext('2d');
+            let width, height, particles = [];
+
+            function resize() {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            class Particle {
+                constructor() { this.reset(); }
+                reset() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.size = Math.random() * 2;
+                    this.speedY = -Math.random() * 0.5 - 0.2; // Move UP
+                    this.life = Math.random();
+                    this.color = `0, 255, 65`; // Green
+                }
+                update() {
+                    this.y += this.speedY;
+                    this.life -= 0.005;
+                    if (this.life <= 0 || this.y < 0) this.reset();
+                }
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${this.color}, ${this.life})`;
+                    ctx.fill();
+                }
+            }
+            for(let i=0; i<100; i++) particles.push(new Particle());
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+                particles.forEach(p => { p.update(); p.draw(); });
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>
