@@ -47,6 +47,8 @@ AI tools were used (in particular Chatgpt and Gemini). As mentioned, it wasn't e
 **Data visualisation description**
 
 The visualization shows data emerging from research on some Old Testament Hebrew terms and their interpretation. In particular, two interpretations were compared: the traditional theological one and that of Mauro Biglino. The visualization also shows how many times each word in the Old Testament (bubbles) is repeated, the bibliographic reference, and the macrotheme assigned to the word (which can change based on the two interpretations). These last data were inserted to give context in addition to the various interpretations.
+![MacBook Pro 14_ - 7](https://github.com/user-attachments/assets/a0e4ab6c-0a5b-4cc5-8ce1-935ef9dbc0b5)
+
 
 
 ## Website
