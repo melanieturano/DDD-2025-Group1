@@ -64,6 +64,7 @@ We are keen to highlight an important aspect of the final matrix. This support i
 
 **Diagram Protocol**
 
+```mermaid
 ---
 Title: DDD Project process - Chiara Baldini, Melanie Turano, Zeno Tamagni
 ---
