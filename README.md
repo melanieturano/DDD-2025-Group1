@@ -56,6 +56,10 @@ The built website aims to report all the contents of the project, as well as the
 **Aesthetics**
 
 The site allowed us to place the entire project within a very specific aesthetic context that aims to recall the theme of extraterrestrials. 
+![MacBook Pro 14_ - 5](https://github.com/user-attachments/assets/eec3e807-2dae-4f37-89a0-a387d24ab6c4)
+![MacBook Pro 14_ - 4](https://github.com/user-attachments/assets/68e2c4e5-f910-4e00-be99-7ae73a5e7ad4)
+
+
 
 **Impact matrix**
 
