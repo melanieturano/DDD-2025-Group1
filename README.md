@@ -1,7 +1,7 @@
 # DDD-2025-Group1
 Chiara Baldini, Melanie Turano, Zeno Tamagni
 
-## Project title
+## Alien saves the Queen
 General research question: What would be the consequences in society if it were discovered that God is actually an alien?
 
 Specific research question: Are there elements within the Hebrew version of the Old Testament that suggest that God is not actually a spiritual being but an extraterrestrial being?
@@ -40,4 +40,20 @@ The most relevant columns are obviously those related to the two interpretations
 
 **Have you used any AI-based tool to understand or manipulate your data? if yes, what and how**
 
-AI tools were used (in particular Chatgpt and Gemini). As mentioned, it wasn't easy to put together a dataset containing the two different interpretations; artificial intelligence helped us with just that. We specifically asked Chatgpt to help us understand which words are most discussed by Biglino so we could get an idea of the number of words to work with. AI was provided with a full PDF version of Biglin's book, the Bible Hub website, and the Hebrew encyclopedia, and asked to compare interpretations, focusing specifically on what Biglin says and what contemporary theology says. The system was able to comply with the request quite easily and, subsequently, we verified what was indicated. During the review, we also integrated data related to translations, etymology, biblical passages, and word repetition. Rather, we used Gemini to hypothetically make us say what would happen in society if Biglino's theories were confirmed. However, we did not abibate the provision of specific reliable sources and the analysis remained hypothetical.
+AI tools were used (in particular Chatgpt and Gemini). As mentioned, it wasn't easy to put together a dataset containing the two different interpretations; artificial intelligence helped us with just that. We specifically asked Chatgpt to help us understand which words are most discussed by Biglino so we could get an idea of the number of words to work with. AI was provided with a full PDF version of Biglin's book, the Bible Hub website, and the Hebrew encyclopedia, and asked to compare interpretations, focusing specifically on what Biglin says and what contemporary theology says. The system was able to comply with the request quite easily and, subsequently, we verified what was indicated. During the review, we also integrated data related to translations, etymology, biblical passages, and word repetition. Rather, we used Gemini to hypothetically make us say what would happen in society if Biglino's theories were confirmed. However, we did not abibate the provision of specific reliable sources and the analysis remained hypothetical. 
+
+
+## Data visualisation
+**Data visualisation description**
+
+The visualization shows data emerging from research on some Old Testament Hebrew terms and their interpretation. In particular, two interpretations were compared: the traditional theological one and that of Mauro Biglino. The visualization also shows how many times each word in the Old Testament (bubbles) is repeated, the bibliographic reference, and the macrotheme assigned to the word (which can change based on the two interpretations). These last data were inserted to give context in addition to the various interpretations.
+
+
+## Website
+The built website aims to report all the contents of the project, as well as the visualization. On this site you can not only consult the results but also the dataset and understand the process carried out.
+
+**Aesthetics**
+The site allowed us to place the entire project within a very specific aesthetic context that aims to recall the theme of extraterrestrials. 
+
+**Impact matrix**
+We are keen to highlight an important aspect of the final matrix. This support is the result of personal thoughts made within the group following the research carried out. The matrix refers to thoughts and findings that remain hypothetical and are not necessarily related to the dataset. The construction of this matrix allowed us, even in a fun way, to provide answers to the question "What would happen in society if it discovered that God is an alien?" Read it then in a critical spirit but without taking it too seriously
