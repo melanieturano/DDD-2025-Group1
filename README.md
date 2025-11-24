@@ -50,10 +50,13 @@ The visualization shows data emerging from research on some Old Testament Hebrew
 
 
 ## Website
+
 The built website aims to report all the contents of the project, as well as the visualization. On this site you can not only consult the results but also the dataset and understand the process carried out.
 
 **Aesthetics**
+
 The site allowed us to place the entire project within a very specific aesthetic context that aims to recall the theme of extraterrestrials. 
 
 **Impact matrix**
+
 We are keen to highlight an important aspect of the final matrix. This support is the result of personal thoughts made within the group following the research carried out. The matrix refers to thoughts and findings that remain hypothetical and are not necessarily related to the dataset. The construction of this matrix allowed us, even in a fun way, to provide answers to the question "What would happen in society if it discovered that God is an alien?" Read it then in a critical spirit but without taking it too seriously
